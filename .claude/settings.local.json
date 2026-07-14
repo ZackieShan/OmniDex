@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:api.adsbdb.com)",
+      "WebFetch(domain:openskynetwork.github.io)",
+      "WebSearch",
+      "WebFetch(domain:opensky-network.org)",
+      "PowerShell(python -m py_compile config.py receiver.py enrichment.py main.py api.py sync_faa_db.py sync_opensky_db.py diagnose.py classifier.py database.py facts.py clear_db.py test_templates.py)",
+      "PowerShell(if \\($?\\) { \"ALL COMPILE OK\" })",
+      "PowerShell($cmds = @\\('py -3 --version','python3 --version','py --version'\\); foreach \\($c in $cmds\\) { Write-Output \"=== $c ===\"; try { Invoke-Expression $c } catch { Write-Output \"  \\(failed: $_\\)\" } }; Write-Output \"=== where ===\"; \\(Get-Command py,python3,python -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\\))",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:api.tidesandcurrents.noaa.gov)"
+    ]
+  }
+}

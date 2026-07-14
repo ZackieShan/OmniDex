@@ -1,0 +1,4291 @@
+/* =============================================
+   SKYDEX - Pokémon-themed Aircraft Tracking Kiosk
+   CSS Theme: Complete Pokédex Replacement
+   Screen: 1024x600 (Raspberry Pi Touchscreen)
+   ============================================= */
+
+/* --- CSS Variables: Pokémon Color Palette --- */
+:root {
+  /* Core Pokédex colors */
+  --pokedex-red: #DC0A2D;
+  --pokedex-dark: #8B0000;
+  --pokedex-black: #1a1a1a;
+
+  /* Screen colors */
+  --screen-bg: #232323;
+  --screen-light: #3a3a3a;
+  --screen-border: #111111;
+
+  /* Accent colors */
+  --accent-blue: #30A7D7;
+  --accent-yellow: #FFCB05;
+  --accent-green: #4ade80;
+
+  /* Type colors (Pokémon-style) */
+  --type-rotor: #F08030;
+  --type-jet: #6890F0;
+  --type-sentinel: #C03028;
+  --type-heavy: #7038F8;
+  --type-bizjet: #F85888;
+  --type-voyager: #98D8D8;
+  --type-trainer: #78C850;
+  --type-hopper: #A89078;
+  --type-hauler: #B8B8D0;
+  --type-medevac: #FF6B9D;
+  --type-commuter: #F8D030;
+
+  /* Rarity colors */
+  --rarity-common: #9e9e9e;
+  --rarity-uncommon: #4caf50;
+  --rarity-rare: #2196f3;
+  --rarity-epic: #9c27b0;
+  --rarity-legendary: #FFD700;
+
+  /* Text */
+  --text: #E8E8E8;
+  --text-dim: #888888;
+  --text-bright: #ffffff;
+
+  /* Special effects */
+  --shiny-gold: #FFD700;
+  --xp-green: #4ade80;
+
+  /* Dimensions — viewport-driven so the same UI fits the 10" landscape panel
+     (1024x600) AND the 15" portrait panel (1080x1920) without code changes. */
+  --screen-width: 100vw;
+  --screen-height: 100vh;
+  --bezel-top: 48px;
+  --bezel-bottom: 72px;
+  --content-height: calc(var(--screen-height) - var(--bezel-top) - var(--bezel-bottom));
+  --night-b: 0.55;
+}
+
+/* --- Reset & Base --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: var(--screen-width);
+  height: var(--screen-height);
+  overflow: hidden;
+  background: #000;
+  font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* --- Main Pokédex Device --- */
+#pokedex-device {
+  width: var(--screen-width);
+  height: var(--screen-height);
+  background: var(--pokedex-red);
+  border: 4px solid var(--pokedex-dark);
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow:
+    inset 0 2px 4px rgba(255,255,255,0.2),
+    inset 0 -2px 4px rgba(0,0,0,0.3),
+    0 0 30px rgba(0,0,0,0.5);
+}
+
+/* --- Pokédex Hinge (top center circle) --- */
+#pokedex-hinge {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 28px;
+  background: var(--pokedex-dark);
+  border-radius: 50%;
+  border: 3px solid var(--pokedex-black);
+  z-index: 1;
+  box-shadow:
+    inset 0 2px 4px rgba(0,0,0,0.4),
+    0 1px 2px rgba(255,255,255,0.2);
+}
+
+#pokedex-hinge::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  background: var(--pokedex-red);
+  border-radius: 50%;
+  border: 2px solid var(--pokedex-black);
+}
+
+/* --- Top Status Bar --- */
+#status-bar {
+  height: var(--bezel-top);
+  background: var(--pokedex-dark);
+  border-radius: 16px 16px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 2px solid var(--pokedex-black);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
+/* Tracker count — offset to avoid hinge overlap */
+#tracker-count {
+  font-size: 11px;
+  color: var(--text);
+  background: rgba(0,0,0,0.3);
+  padding: 2px 8px;
+  border-radius: 10px;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-led {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  box-shadow: 0 0 6px var(--accent-green);
+  animation: led-pulse 2s ease-in-out infinite;
+}
+
+@keyframes led-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--accent-green); }
+  50% { opacity: 0.5; box-shadow: 0 0 2px var(--accent-green); }
+}
+
+#clock-display {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--accent-yellow);
+  letter-spacing: 1px;
+}
+
+/* Sky / Sea segmented toggle */
+.mode-switch {
+  display: inline-flex;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.mode-seg {
+  background: transparent;
+  color: var(--text-dim);
+  border: none;
+  padding: 4px 9px;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+}
+#mode-atmo.active {
+  background: #6a4fd0;
+  color: #fff;
+}
+#mode-sky.active {
+  background: var(--accent-blue);
+  color: #fff;
+}
+#mode-sea.active {
+  background: #15a3a3;
+  color: #fff;
+}
+
+/* tracker-count styles merged into status-bar section above */
+
+/* --- Main Screen Area --- */
+#pokedex-screen {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;   /* weather strip / banner take their height; the view fills the rest */
+  background: var(--screen-bg);
+  border: 3px solid var(--screen-border);
+  margin: 0 12px;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    inset 0 0 20px rgba(0,0,0,0.6),
+    inset 0 2px 4px rgba(255,255,255,0.05);
+}
+
+/* Scanline overlay */
+#scanlines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.08) 2px,
+    rgba(0,0,0,0.08) 4px
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Animated scanline beam */
+#scanline-beam {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgba(100, 200, 255, 0.15);
+  z-index: 11;
+  pointer-events: none;
+  /* transform (GPU-composited), NOT top (full-screen repaint every frame) */
+  animation: scanline-move 4s linear infinite;
+  will-change: transform;
+}
+
+@keyframes scanline-move {
+  0% { transform: translateY(-4px); }
+  100% { transform: translateY(100vh); }
+}
+
+/* Screen content */
+#screen-content {
+  position: relative;
+  z-index: 5;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-blue) var(--screen-bg);
+}
+
+#screen-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+#screen-content::-webkit-scrollbar-track {
+  background: var(--screen-bg);
+}
+
+#screen-content::-webkit-scrollbar-thumb {
+  background: var(--accent-blue);
+  border-radius: 3px;
+}
+
+/* --- View Containers --- */
+.view {
+  display: none;
+  padding: 12px;
+  /* fill the screen's remaining height (below the weather strip / banner) and
+     scroll inside it, so the bottom of the page is always reachable */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* iPhone-like momentum/inertia scrolling on the touchscreen */
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+
+.view.active {
+  display: block;
+}
+
+/* --- Screen Header --- */
+.screen-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--screen-light);
+  margin-bottom: 10px;
+}
+
+.screen-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--accent-yellow);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.screen-subtitle {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* --- Contact Rows (Aircraft List Items) --- */
+.contact-row {
+  display: flex;
+  align-items: center;
+  background: var(--screen-light);
+  border: 1px solid #444;
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+  min-height: 64px;
+  overflow: hidden;
+}
+
+.contact-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--accent-blue);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.contact-row:hover::before,
+.contact-row:active::before {
+  opacity: 1;
+}
+
+.contact-row:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  border-color: var(--accent-blue);
+}
+
+.contact-row:active {
+  transform: scale(0.98);
+  border-color: var(--accent-yellow);
+  box-shadow: 0 0 12px rgba(255,203,5,0.3);
+}
+
+/* Entry animation for new contacts */
+.contact-row.entry-animation {
+  animation: entry-bounce 0.5s ease-out;
+}
+
+@keyframes entry-bounce {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* --- Type Badge (Circular, colored) --- */
+.type-badge-container {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,0.3);
+  box-shadow:
+    inset 0 -3px 6px rgba(0,0,0,0.3),
+    inset 0 2px 4px rgba(255,255,255,0.2),
+    0 2px 4px rgba(0,0,0,0.3);
+  font-size: 18px;
+  position: relative;
+}
+
+.type-badge-container.type-rotor { background: var(--type-rotor); }
+.type-badge-container.type-jet { background: var(--type-jet); }
+.type-badge-container.type-sentinel { background: var(--type-sentinel); }
+.type-badge-container.type-heavy { background: var(--type-heavy); }
+.type-badge-container.type-bizjet { background: var(--type-bizjet); }
+.type-badge-container.type-voyager { background: var(--type-voyager); }
+.type-badge-container.type-trainer { background: var(--type-trainer); }
+.type-badge-container.type-hopper { background: var(--type-hopper); }
+.type-badge-container.type-hauler { background: var(--type-hauler); }
+.type-badge-container.type-medevac { background: var(--type-medevac); }
+.type-badge-container.type-commuter { background: var(--type-commuter); }
+
+/* Type pills for detail view */
+.type-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 2px;
+  box-shadow:
+    inset 0 -2px 4px rgba(0,0,0,0.3),
+    inset 0 1px 2px rgba(255,255,255,0.3),
+    0 2px 4px rgba(0,0,0,0.2);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.type-pill.type-rotor { background: var(--type-rotor); }
+.type-pill.type-jet { background: var(--type-jet); }
+.type-pill.type-sentinel { background: var(--type-sentinel); }
+.type-pill.type-heavy { background: var(--type-heavy); }
+.type-pill.type-bizjet { background: var(--type-bizjet); }
+.type-pill.type-voyager { background: var(--type-voyager); color: #333; }
+.type-pill.type-trainer { background: var(--type-trainer); }
+.type-pill.type-hopper { background: var(--type-hopper); }
+.type-pill.type-hauler { background: var(--type-hauler); color: #333; }
+.type-pill.type-medevac { background: var(--type-medevac); }
+.type-pill.type-commuter { background: var(--type-commuter); color: #333; }
+
+/* --- Contact Info --- */
+.contact-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.contact-callsign {
+  font-size: 15px;
+  font-weight: bold;
+  color: var(--text-bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contact-model {
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contact-route {
+  font-size: 10px;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Contact Stats (right side) --- */
+.contact-stats {
+  text-align: right;
+  flex-shrink: 0;
+  margin-left: 10px;
+}
+
+.altitude-display {
+  font-size: 20px;
+  font-weight: bold;
+  font-family: 'Courier New', monospace;
+  line-height: 1.1;
+}
+
+.altitude-high { color: #ff6b6b; }
+.altitude-mid { color: var(--accent-yellow); }
+.altitude-low { color: var(--accent-green); }
+.altitude-ground { color: var(--text-dim); }
+
+.distance-display {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+/* --- Rarity Stars --- */
+.rarity-stars {
+  display: flex;
+  gap: 1px;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.rarity-common .star { color: var(--rarity-common); }
+.rarity-uncommon .star { color: var(--rarity-uncommon); }
+.rarity-rare .star { color: var(--rarity-rare); }
+.rarity-epic .star { color: var(--rarity-epic); }
+.rarity-legendary .star {
+  color: var(--rarity-legendary);
+  animation: star-sparkle 1.5s ease-in-out infinite;
+}
+
+@keyframes star-sparkle {
+  0%, 100% { text-shadow: 0 0 2px var(--rarity-legendary); transform: scale(1); }
+  50% { text-shadow: 0 0 8px var(--rarity-legendary), 0 0 16px rgba(255,215,0,0.5); transform: scale(1.15); }
+}
+
+/* --- XP / Evolution Bar --- */
+.xp-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.xp-label {
+  font-size: 9px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  width: 48px;
+  flex-shrink: 0;
+}
+
+.xp-bar-bg {
+  flex: 1;
+  height: 8px;
+  background: #222;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid #444;
+  position: relative;
+}
+
+.xp-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+  position: relative;
+}
+
+.xp-bar-fill.tier-spotted { width: 20%; background: #888; }
+.xp-bar-fill.tier-tracked { width: 50%; background: var(--accent-blue); }
+.xp-bar-fill.tier-tagged { width: 80%; background: var(--accent-green); }
+.xp-bar-fill.tier-bonded {
+  width: 100%;
+  background: linear-gradient(90deg, var(--accent-green), var(--xp-green));
+  animation: xp-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes xp-pulse {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; filter: brightness(1.2); }
+}
+
+/* --- Catch Flash Animation --- */
+#catch-flash-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255,255,255,0.9);
+  z-index: 1000;
+  pointer-events: none;
+  opacity: 0;
+}
+
+#catch-flash-overlay.flash-active {
+  animation: catch-flash 0.6s ease-out;
+}
+
+@keyframes catch-flash {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* --- Shiny Sparkle Effect --- */
+.shiny-sparkle {
+  position: absolute;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.shiny-sparkle .sparkle-star {
+  position: absolute;
+  color: var(--shiny-gold);
+  font-size: 14px;
+  animation: sparkle-anim 0.8s ease-out forwards;
+}
+
+@keyframes sparkle-anim {
+  0% {
+    transform: scale(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.5) rotate(180deg);
+    opacity: 0;
+  }
+}
+
+/* --- Empty State / Pokéball Spinner --- */
+#empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.pokeball-spinner {
+  width: 80px;
+  height: 80px;
+  position: relative;
+  animation: pokeball-rotate 2s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes pokeball-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.pokeball-spinner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 50%;
+  background: var(--pokedex-red);
+  border-radius: 80px 80px 0 0;
+  border: 3px solid #333;
+  border-bottom: none;
+}
+
+.pokeball-spinner::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 50%;
+  background: #fff;
+  border-radius: 0 0 80px 80px;
+  border: 3px solid #333;
+  border-top: none;
+}
+
+.pokeball-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  background: #fff;
+  border: 3px solid #333;
+  border-radius: 50%;
+  z-index: 2;
+}
+
+.pokeball-button::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border: 2px solid #333;
+  border-radius: 50%;
+}
+
+.empty-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--accent-yellow);
+  margin-bottom: 8px;
+}
+
+.empty-message {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 16px;
+}
+
+.fact-box {
+  background: var(--screen-bg);
+  border: 2px solid var(--screen-light);
+  border-radius: 10px;
+  padding: 12px 16px;
+  max-width: 400px;
+  position: relative;
+}
+
+.fact-label {
+  font-size: 10px;
+  color: var(--accent-blue);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.fact-text {
+  font-size: 13px;
+  color: var(--text);
+  font-style: italic;
+  line-height: 1.4;
+}
+
+/* --- Bottom Navigation (Pokédex Buttons) --- */
+#pokedex-controls {
+  height: var(--bezel-bottom);
+  background: var(--pokedex-dark);
+  border-radius: 0 0 16px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px;
+  border-top: 2px solid var(--pokedex-black);
+  flex-shrink: 0;
+}
+
+.nav-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Press-and-hold scroll pads flanking the module buttons */
+.scroll-pad {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.scroll-btn {
+  width: 56px;
+  height: 26px;
+  border: none;
+  border-radius: 7px;
+  background: var(--accent-blue);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  box-shadow: inset 0 -2px 4px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.scroll-btn:active {
+  background: var(--accent-yellow);
+  color: #1a1a1a;
+  transform: scale(0.95);
+}
+
+.pokedex-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 12px;
+  transition: transform 0.1s;
+}
+
+.pokedex-btn:active {
+  transform: scale(0.92);
+}
+
+.pokedex-btn-label {
+  font-size: 9px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Main blue button */
+.btn-main {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--accent-blue);
+  border: 3px solid rgba(255,255,255,0.2);
+  box-shadow:
+    inset 0 -4px 8px rgba(0,0,0,0.3),
+    inset 0 2px 4px rgba(255,255,255,0.2),
+    0 2px 6px rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  transition: all 0.15s;
+}
+
+.btn-main:active {
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,0.4),
+    0 0 12px rgba(48,167,215,0.5);
+}
+
+/* Small red button */
+.btn-red {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--pokedex-red);
+  border: 2px solid rgba(255,255,255,0.2);
+  box-shadow:
+    inset 0 -2px 4px rgba(0,0,0,0.3),
+    0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* Small green button */
+.btn-green {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  border: 2px solid rgba(255,255,255,0.2);
+  box-shadow:
+    inset 0 -2px 4px rgba(0,0,0,0.3),
+    0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* Directional pad */
+.dpad {
+  width: 44px;
+  height: 44px;
+  position: relative;
+}
+
+.dpad-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  background: #444;
+  z-index: 2;
+}
+
+.dpad-up, .dpad-down, .dpad-left, .dpad-right {
+  position: absolute;
+  background: #444;
+  border: 1px solid #555;
+}
+
+.dpad-up, .dpad-down {
+  width: 14px;
+  height: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.dpad-left, .dpad-right {
+  width: 16px;
+  height: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.dpad-up { top: 0; border-radius: 4px 4px 0 0; }
+.dpad-down { bottom: 0; border-radius: 0 0 4px 4px; }
+.dpad-left { left: 0; border-radius: 4px 0 0 4px; }
+.dpad-right { right: 0; border-radius: 0 4px 4px 0; }
+
+/* Active button states */
+.pokedex-btn.active .btn-main,
+.pokedex-btn.active .btn-red,
+.pokedex-btn.active .btn-green {
+  box-shadow:
+    0 0 10px rgba(255,255,255,0.3),
+    inset 0 2px 6px rgba(0,0,0,0.3);
+}
+
+.pokedex-btn.active .pokedex-btn-label {
+  color: var(--accent-yellow);
+}
+
+/* --- Dex Detail Page --- */
+.dex-detail-layout {
+  display: flex;
+  gap: 16px;
+  height: 100%;
+}
+
+.dex-detail-left {
+  width: 45%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.dex-detail-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.dex-number {
+  font-size: 36px;
+  font-weight: bold;
+  color: var(--text-dim);
+  font-family: 'Courier New', monospace;
+  align-self: flex-start;
+}
+
+.dex-name {
+  font-size: 20px;
+  font-weight: bold;
+  color: var(--text-bright);
+  margin-bottom: 8px;
+  align-self: flex-start;
+}
+
+.dex-photo-frame {
+  width: 100%;
+  /* 3:2 matches Planespotters/JetPhotos shots, so cover barely crops.
+     (The old max-height:112px squashed photos into a skinny strip.) */
+  aspect-ratio: 3/2;
+  max-height: 240px;
+  background: var(--screen-light);
+  border: 3px solid var(--screen-border);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  margin: 8px 0;
+}
+
+/* Model fact under the photo on the Dex detail page */
+.dex-fact {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-dim);
+  background: rgba(255, 203, 5, 0.07);
+  border-left: 3px solid var(--accent-yellow);
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin: 4px 0 6px;
+  text-align: left;
+}
+
+.dex-fact-label {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent-yellow);
+  margin-bottom: 2px;
+}
+
+.dex-photo-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dex-photo-placeholder {
+  font-size: 48px;
+  opacity: 0.3;
+}
+
+.dex-types-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.dex-section-title {
+  font-size: 12px;
+  color: var(--accent-yellow);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 10px 0 6px;
+  border-bottom: 1px solid var(--screen-light);
+  padding-bottom: 2px;
+}
+
+/* Stats Grid (Pokémon-style) */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-name {
+  width: 70px;
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  text-align: right;
+}
+
+.stat-bar-bg {
+  flex: 1;
+  height: 10px;
+  background: #222;
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid #444;
+}
+
+.stat-bar-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.5s ease;
+}
+
+.stat-hp { background: #ff5959; }
+.stat-speed { background: #f85888; }
+.stat-attack { background: #f08030; }
+.stat-defense { background: #f8d030; }
+.stat-spatk { background: #6890f0; }
+.stat-spdef { background: #78c850; }
+
+.stat-value {
+  width: 36px;
+  font-size: 11px;
+  color: var(--text);
+  font-family: 'Courier New', monospace;
+}
+
+/* Battle log / History */
+.battle-log {
+  background: var(--screen-bg);
+  border: 1px solid var(--screen-light);
+  border-radius: 8px;
+  padding: 8px;
+  max-height: 120px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  font-size: 11px;
+}
+
+.log-entry {
+  padding: 2px 0;
+  color: var(--text-dim);
+  border-bottom: 1px solid #333;
+}
+
+.log-entry:last-child {
+  border-bottom: none;
+}
+
+.log-time {
+  color: var(--accent-blue);
+  font-family: 'Courier New', monospace;
+  margin-right: 6px;
+}
+
+/* --- Dex List View --- */
+/* Planedex filter / sort bar */
+.dex-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.dex-filters select {
+  flex: 1;
+  min-width: 120px;
+  min-height: 38px;
+  background: var(--screen-light);
+  color: var(--text);
+  border: 1px solid #555;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.dex-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 4px;
+}
+
+.dex-card {
+  position: relative;
+  background: var(--screen-light);
+  border: 2px solid #444;
+  border-radius: 10px;
+  padding: 10px 8px 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.dex-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-yellow);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.dex-card-sprite {
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 6px;
+  background: var(--screen-bg);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.dex-card-number {
+  position: absolute;
+  top: 5px;
+  left: 8px;
+  font-size: 10px;
+  color: var(--text-dim);
+  font-family: 'Courier New', monospace;
+}
+
+.dex-card-name {
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--text-bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dex-card-type {
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+.dex-card-rarity {
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+
+.dex-card-count {
+  font-size: 10px;
+  color: var(--accent-yellow);
+  margin-top: 3px;
+}
+
+.dex-card-shiny {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 14px;
+  animation: star-sparkle 1.5s ease-in-out infinite;
+}
+
+/* --- Stats View --- */
+.stats-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.stat-card {
+  background: var(--screen-light);
+  border: 2px solid #444;
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+
+.stat-card-value {
+  font-size: 28px;
+  font-weight: bold;
+  color: var(--accent-yellow);
+  font-family: 'Courier New', monospace;
+}
+
+.stat-card-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.type-distribution {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.type-dist-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--screen-light);
+  border-radius: 12px;
+  padding: 4px 10px;
+  font-size: 11px;
+}
+
+.type-dist-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* --- Weather Strip --- */
+#weather-strip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0,0,0,0.7);
+  border-bottom: 1px solid var(--screen-light);
+  padding: 4px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  z-index: 20;
+}
+
+.weather-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.weather-item svg {
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.weather-temp {
+  color: var(--accent-yellow);
+  font-weight: bold;
+}
+
+/* --- Toast Notifications --- */
+#toast-container {
+  position: absolute;
+  top: 36px;
+  right: 12px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--screen-light);
+  border: 2px solid var(--accent-yellow);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--text);
+  animation: toast-in 0.3s ease-out, toast-out 0.3s ease-in 2.7s forwards;
+  max-width: 260px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+.toast.new-catch {
+  border-color: var(--accent-green);
+  background: rgba(74, 222, 128, 0.15);
+}
+
+@keyframes toast-in {
+  from { transform: translateX(100px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes toast-out {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100px); opacity: 0; }
+}
+
+/* --- Pulse Glow --- */
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 5px rgba(48, 167, 215, 0.3); }
+  50% { box-shadow: 0 0 15px rgba(48, 167, 215, 0.6), 0 0 30px rgba(48, 167, 215, 0.2); }
+}
+
+/* --- Type Reveal Animation --- */
+.type-reveal {
+  animation: type-slide-in 0.3s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes type-slide-in {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* --- Utility Classes --- */
+.hidden { display: none !important; }
+.text-center { text-align: center; }
+.mt-1 { margin-top: 4px; }
+.mt-2 { margin-top: 8px; }
+.mb-1 { margin-bottom: 4px; }
+.mb-2 { margin-bottom: 8px; }
+
+/* --- Scrollbar styling for webkit (thick + finger-friendly for touch) --- */
+::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 7px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--accent-blue);
+  border: 3px solid var(--screen-bg);
+  border-radius: 7px;
+  min-height: 48px;
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: var(--accent-yellow);
+}
+
+/* --- Responsive adjustments for 1024x600 --- */
+@media (max-width: 1024px) {
+  #pokedex-device {
+    border-radius: 0;
+    border: none;
+  }
+  #pokedex-controls {
+    border-radius: 0;
+  }
+  #status-bar {
+    border-radius: 0;
+  }
+}
+
+/* --- Sprite Animations --- */
+.sprite-bounce {
+  animation: sprite-bounce 0.5s ease;
+}
+
+@keyframes sprite-bounce {
+  0%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-8px); }
+  50% { transform: translateY(0); }
+  70% { transform: translateY(-4px); }
+}
+
+/* Legendary glow effect */
+.legendary-glow {
+  animation: legendary-glow 2s ease-in-out infinite;
+}
+
+@keyframes legendary-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3), inset 0 0 10px rgba(255, 215, 0, 0.1);
+    border-color: rgba(255, 215, 0, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.6), inset 0 0 20px rgba(255, 215, 0, 0.2);
+    border-color: rgba(255, 215, 0, 0.8);
+  }
+}
+
+/* Loading state for rows */
+.loading-row {
+  background: linear-gradient(90deg, var(--screen-light) 25%, #444 50%, var(--screen-light) 75%);
+  background-size: 200% 100%;
+  animation: loading-shimmer 1.5s infinite;
+  border-radius: 10px;
+  height: 64px;
+  margin-bottom: 8px;
+}
+
+@keyframes loading-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ============================================ */
+/* WEATHER + TIDE CONDITIONS STRIP              */
+/* ============================================ */
+
+/* The weather strip now shows: Weather | Tide in two sections */
+#weather-strip {
+  position: relative;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0,0,0,0.75);
+  border-bottom: 1px solid var(--screen-light);
+  padding: 5px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  z-index: 20;
+  /* backdrop blur removed: the always-visible strip made the Pi pay the
+     costliest CSS effect on every frame at 1080p */
+  min-height: 28px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+#weather-strip.hidden {
+  display: none !important;
+}
+
+/* Ensure the Live view accounts for the weather strip */
+#view-contacts {
+  padding-top: 4px;
+}
+
+/* Audio enabled indicator (small speaker icon in status bar) */
+#audio-indicator {
+  font-size: 10px;
+  opacity: 0.5;
+  margin-left: 4px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+#audio-indicator:hover {
+  opacity: 1;
+}
+
+#audio-indicator.muted {
+  opacity: 0.2;
+  text-decoration: line-through;
+}
+
+/* ============================================ */
+/* MISSING SELECTORS — legacy compat            */
+/* ============================================ */
+
+/* Bottom controls area */
+#bottom-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px 14px;
+  background: var(--pokedex-red);
+  border-top: 3px solid var(--pokedex-dark);
+  position: relative;
+}
+
+/* Blue action button (large, right side) */
+.btn-blue {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #30A7D7 0%, #1E7FA8 100%);
+  border: 3px solid rgba(0,0,0,0.3);
+  box-shadow: inset 0 -4px 8px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.2), 0 3px 8px rgba(0,0,0,0.4);
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.btn-blue:active {
+  transform: scale(0.92);
+  box-shadow: inset 0 4px 8px rgba(0,0,0,0.4);
+}
+
+/* XP bar evolution progress */
+.xp-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--screen-light);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.xp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4ade80, #22c55e);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+  box-shadow: 0 0 6px rgba(74,222,128,0.3);
+}
+
+/* Pokemon-style stats grid on Dex detail */
+.dex-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+
+.dex-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.dex-stat-name {
+  width: 42px;
+  font-weight: 700;
+  font-size: 11px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.dex-stat-val {
+  width: 36px;
+  text-align: right;
+  color: var(--text);
+  font-weight: 600;
+  font-family: monospace;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+/* Stat bar for Pokemon-style stats */
+.stat-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--screen-light);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.stat-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+/* ============================================ */
+/* TYPE ICON SVGs + badges + facts ticker       */
+/* ============================================ */
+
+/* White silhouette on the colored type badge */
+.type-badge-container { color: #fff; }
+.type-badge-container svg { width: 60%; height: 60%; display: block; }
+/* Light-colored badges need a dark icon for contrast */
+.type-badge-container.type-voyager,
+.type-badge-container.type-hauler,
+.type-badge-container.type-commuter { color: #2a2a2a; }
+
+.dex-card-sprite svg { width: 60%; height: 60%; }
+.dex-photo-placeholder svg { width: 100%; height: 100%; }
+
+/* Small inline status chips (e.g. Contrail) next to the callsign */
+.badge-chip {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 8px;
+  margin-left: 6px;
+  vertical-align: middle;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.badge-chip.contrail {
+  background: rgba(48, 167, 215, 0.18);
+  color: var(--accent-blue);
+  border: 1px solid var(--accent-blue);
+}
+
+/* Leave room above the bottom ticker so list content isn't hidden */
+.view { padding-bottom: 28px; }
+
+/* Bottom scrolling facts ticker (KBDR / local / aviation) */
+#fact-ticker {
+  flex-shrink: 0;          /* its own row in the device column — never overlaps the screen */
+  height: 28px;
+  margin: 3px 12px 0;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid var(--screen-light);
+  border-radius: 6px;
+  overflow: hidden;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+}
+
+#fact-ticker-track {
+  display: inline-block;
+  white-space: nowrap;
+  padding-left: 100%;
+  font-size: 14px;
+  font-style: italic;
+  color: var(--text);
+  opacity: 0.85;
+  animation: ticker-scroll 80s linear infinite;
+}
+
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+
+/* Real aircraft spec sheet (Type Specs) */
+.spec-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+.spec-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.spec-name {
+  width: 78px;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  text-align: right;
+}
+.spec-value {
+  width: 78px;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text);
+  font-family: 'Courier New', monospace;
+  text-align: right;
+}
+
+/* Country flag + airline logos */
+.flag {
+  width: 18px;
+  height: 13px;
+  border-radius: 2px;
+  vertical-align: middle;
+  margin-right: 5px;
+  box-shadow: 0 0 1px rgba(255, 255, 255, 0.4);
+}
+.airline-logo {
+  height: 22px;
+  max-width: 64px;
+  object-fit: contain;
+  vertical-align: middle;
+  background: #fff;
+  border-radius: 3px;
+  padding: 1px 2px;
+}
+.airline-logo-sm {
+  height: 13px;
+  max-width: 34px;
+  object-fit: contain;
+  vertical-align: middle;
+  margin-right: 5px;
+  background: #fff;
+  border-radius: 2px;
+}
+
+/* Route banner on the Dex detail page */
+.route-banner {
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  background: rgba(48, 167, 215, 0.1);
+  border-left: 3px solid var(--accent-blue);
+  border-radius: 6px;
+}
+.route-banner-line {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.route-banner-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+/* Collectible badges on the Dex detail card */
+.dex-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  justify-content: center;
+  margin: 8px 0 2px;
+}
+.dex-badge {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 2px 7px;
+  border-radius: 9px;
+}
+.photo-credit {
+  font-size: 9px;
+  color: var(--text-faint);
+  text-align: center;
+  margin: 2px 0 4px;
+}
+.toast.emergency {
+  border-color: #ff4d4d;
+  background: rgba(255, 77, 77, 0.22);
+  color: #fff;
+  font-weight: bold;
+}
+
+/* Activity chart container */
+.chart-box {
+  background: var(--screen-bg);
+  border: 1px solid var(--screen-light);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+}
+
+/* Live view: list on the left, radar on the right */
+.live-layout {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.live-list {
+  flex: 1;
+  min-width: 0;
+  max-height: calc(var(--content-height) - 12px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+.live-radar {
+  width: 55%;
+  max-width: 520px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+}
+.radar-caption {
+  text-align: center;
+  font-size: 9px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+.radar-toggle {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.rt-btn {
+  flex: 1;
+  background: var(--screen-light);
+  color: var(--text-dim);
+  border: 1px solid #444;
+  border-radius: 7px;
+  padding: 6px 0;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.rt-btn.active {
+  background: var(--accent-blue);
+  color: #fff;
+  border-color: var(--accent-blue);
+}
+#map {
+  width: 100%;
+  height: 240px;   /* wide but short — sits neatly under the header row */
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid var(--screen-border);
+}
+/* Radar is the fallback — keep the square SVG from ballooning in the wider
+   column so it stays a sensible size and centered. */
+#radar {
+  max-width: 380px;
+  margin: 0 auto;
+}
+/* Leaflet markers — strip the default white icon box */
+.leaflet-div-icon.plane-marker {
+  background: transparent;
+  border: none;
+}
+/* Type-shaped map marker: plane / prop / heli / fighter / ship / sail */
+.map-icon {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(10, 15, 10, 0.92);
+  border: 2px solid #888;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.map-icon .mi-glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+.map-icon .mi-num {
+  position: absolute;
+  bottom: -5px;
+  right: -5px;
+  min-width: 14px;
+  height: 14px;
+  line-height: 14px;
+  padding: 0 2px;
+  font-size: 9px;
+  font-weight: bold;
+  color: #0a0f0a;
+  border-radius: 7px;
+  text-align: center;
+  box-sizing: border-box;
+  box-shadow: 0 0 0 1px #0a0f0a;
+}
+.contact-num {
+  width: 20px;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--accent-yellow);
+  font-family: 'Courier New', monospace;
+  margin-right: 6px;
+}
+@media (max-width: 640px) {
+  .live-layout { flex-direction: column; }
+  .live-radar { width: 100%; max-width: 320px; margin: 0 auto; position: static; }
+  #map { height: 280px; }
+}
+
+/* Two-column Stats layout (uses the full landscape width) */
+.stats-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+  margin-top: 4px;
+}
+.stats-col {
+  min-width: 0;
+}
+@media (max-width: 640px) {
+  .stats-columns { grid-template-columns: 1fr; }
+}
+
+/* --- Day Summary (Today at SkyDex) --- */
+.day-summary-btn {
+  width: 100%;
+  margin: 6px 0 10px;
+  padding: 9px 12px;
+  background: linear-gradient(90deg, var(--accent-blue), #15a3a3);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+}
+.day-summary-btn:active { transform: translateY(1px); }
+.day-summary-back {
+  background: transparent;
+  border: 1px solid var(--accent-blue);
+  color: var(--accent-blue);
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+}
+#daysummary-content { padding-bottom: 12px; }
+.ds-section {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+.ds-head {
+  font-size: 15px;
+  font-weight: bold;
+  color: var(--text);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ds-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.ds-stats {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.ds-stat {
+  background: var(--screen-bg);
+  border-radius: 8px;
+  padding: 8px 4px;
+  text-align: center;
+}
+.ds-stat-val { font-size: 20px; font-weight: bold; color: var(--text); }
+.ds-stat-lbl { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px; }
+.ds-highlights { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.ds-hl {
+  flex: 1;
+  min-width: 90px;
+  background: var(--screen-bg);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.ds-hl-lbl { font-size: 10px; color: var(--text-dim); text-transform: uppercase; }
+.ds-hl-val { font-size: 18px; font-weight: bold; color: var(--accent-yellow); }
+.ds-hl-sub { font-size: 11px; color: var(--text-dim); }
+.ds-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 640px) { .ds-cols { grid-template-columns: 1fr; } .ds-stats { grid-template-columns: repeat(3, 1fr); } }
+.ds-sub {
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--accent-blue);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin: 12px 0 6px;
+}
+.ds-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.ds-chip {
+  font-size: 11px;
+  border: 1px solid #888;
+  border-radius: 10px;
+  padding: 2px 8px;
+}
+.ds-rank { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.ds-rank-lbl { color: var(--text); }
+.ds-rank-ct { font-weight: bold; }
+.ds-empty { font-size: 11px; color: var(--text-dim); padding: 4px 0; }
+.ds-roster { display: flex; flex-direction: column; gap: 4px; }
+.ds-roster-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  background: var(--screen-bg);
+  border-radius: 8px;
+  padding: 7px 10px;
+}
+.ds-roster-main { min-width: 0; font-size: 13px; }
+.ds-roster-sub { font-size: 11px; color: var(--text-dim); margin-top: 1px; }
+.ds-roster-stats { display: flex; gap: 10px; font-size: 11px; color: var(--text-dim); white-space: nowrap; flex-shrink: 0; }
+.ds-new { font-size: 9px; font-weight: bold; color: #062; background: var(--accent-green); border-radius: 4px; padding: 1px 5px; }
+.ds-rep { font-size: 10px; color: var(--text-dim); }
+.ds-emerg {
+  background: rgba(255,80,80,0.12);
+  border: 1px solid rgba(255,80,80,0.4);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+}
+.ds-emerg-title { font-size: 12px; font-weight: bold; color: #ff6b6b; margin-bottom: 4px; }
+
+/* SeaDex-only extra stats: hidden in air mode, shown in sea mode */
+#sea-extra-stats { display: none; }
+body.sea-mode #sea-extra-stats { display: block; }
+
+/* Active weather / marine advisory banner (under the weather strip) */
+#alert-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 12px;
+  background: rgba(0, 0, 0, 0.55);
+  border-bottom: 1px solid var(--screen-light);
+}
+#alert-banner.hidden { display: none; }
+.alert-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px 8px;
+  border-radius: 10px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+.alert-chip.alert-warning {
+  background: rgba(220, 20, 20, 0.22);
+  border: 1px solid #ff5b5b;
+  color: #ff8a8a;
+}
+.alert-chip.alert-advisory {
+  background: rgba(255, 180, 0, 0.16);
+  border: 1px solid #ffb300;
+  color: #ffd27a;
+}
+
+/* --- AtmoDex (Tonight's Sky) --- */
+.atmo-hdr-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(106, 79, 208, 0.22);
+  border: 1px solid #6a4fd0;
+  color: #cfc3ff;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.atmo-hdr-btn:active { transform: translateY(1px); }
+.atmo-hero { display: flex; gap: 10px; margin-bottom: 10px; }
+.atmo-quality {
+  flex: 1;
+  border: 2px solid #888;
+  border-radius: 10px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.atmo-quality-label { font-size: 18px; font-weight: bold; }
+.atmo-wx { text-align: right; min-width: 90px; }
+.atmo-big { font-size: 16px; font-weight: bold; color: var(--text); }
+.atmo-sub { font-size: 11px; color: var(--text-dim); }
+.atmo-alerts { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.atmo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 6px; }
+@media (max-width: 560px) { .atmo-grid { grid-template-columns: 1fr; } }
+.atmo-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 10px;
+}
+.atmo-card-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent-blue);
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+.atmo-moon { display: flex; align-items: center; gap: 10px; }
+.atmo-moon-disc {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: linear-gradient(90deg, #f4f1d0 var(--illum, 0%), #23233a var(--illum, 0%));
+  box-shadow: 0 0 10px rgba(244, 241, 208, 0.4);
+  border: 1px solid #444;
+}
+.atmo-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.atmo-line span { color: var(--text-dim); }
+.atmo-line b { color: var(--text); }
+.atmo-planets { display: flex; flex-direction: column; gap: 4px; }
+.atmo-planet {
+  background: var(--screen-bg);
+  border-radius: 8px;
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+}
+.atmo-tips { display: flex; flex-direction: column; gap: 5px; }
+.atmo-tip {
+  font-size: 12px;
+  color: var(--text);
+  background: rgba(48, 167, 215, 0.08);
+  border-left: 3px solid var(--accent-blue);
+  padding: 5px 8px;
+  border-radius: 0 6px 6px 0;
+}
+.atmo-apod-title { font-weight: bold; color: var(--text); font-size: 13px; }
+
+/* Satellites */
+.sat-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+}
+.sat-head { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text); }
+.sat-eye { color: var(--accent-yellow); font-size: 10px; }
+.sat-type {
+  margin-left: auto;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-dim);
+  border: 1px solid var(--screen-light);
+  border-radius: 8px;
+  padding: 1px 6px;
+}
+.sat-purpose { font-size: 12px; color: var(--text); margin-top: 3px; }
+.sat-pass { font-size: 12px; color: var(--accent-green); margin-top: 4px; }
+.sat-card { cursor: pointer; }
+.sat-card:active { transform: translateY(1px); }
+.sat-now {
+  font-size: 9px;
+  font-weight: bold;
+  color: #0a0f0a;
+  background: var(--accent-green);
+  border-radius: 4px;
+  padding: 1px 6px;
+  vertical-align: middle;
+}
+
+/* UFO easter egg */
+#ufo-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  overflow: hidden;
+}
+#ufo-overlay.ufo-fly { display: block; }
+#ufo-overlay .ufo-craft {
+  position: absolute;
+  left: -120px;
+  top: 35%;
+  filter: drop-shadow(0 0 12px #6a4fd0);
+  animation: ufo-streak 1.8s ease-in-out forwards;
+}
+@keyframes ufo-streak {
+  0%   { left: -120px; top: 38%; transform: rotate(-8deg) scale(0.8); opacity: 0; }
+  12%  { opacity: 1; }
+  55%  { top: 16%; }
+  100% { left: 110%; top: 8%; transform: rotate(10deg) scale(1.15); opacity: 0.9; }
+}
+
+/* Forecast */
+.fc-row {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 4px 10px;
+  padding: 8px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.fc-row.fc-night { background: rgba(48, 80, 130, 0.10); border-radius: 6px; }
+.fc-name { font-weight: bold; color: var(--text); font-size: 12px; }
+.fc-main { font-size: 13px; color: var(--text); }
+.fc-row .atmo-sub { grid-column: 2; }
+
+
+/* Anchored section in the SeaDex live list */
+.live-subsection {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: bold;
+  color: #90a4ae;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 12px 0 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.contact-row.anchored-row { opacity: 0.72; }
+.anchor-chip { color: #90a4ae; }
+
+
+/* ============================================================
+   NEW CONTROLS & VIEWS (controls.js / records.js / showcase.js)
+   ============================================================ */
+
+/* --- Live-view action button row --- */
+.action-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.action-row .day-summary-btn { margin: 0; }
+
+/* --- Gear button (status bar) --- */
+#gear-btn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.75);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+#gear-btn:active { transform: rotate(45deg); }
+
+#voice-mute {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.75);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+#voice-mute.muted { color: #ff6b6b; }
+#voice-mute:active { transform: scale(0.9); }
+
+/* --- Quick-settings drawer --- */
+#settings-drawer {
+  position: absolute;
+  top: 44px;
+  right: 8px;
+  width: 270px;
+  background: #10141a;
+  border: 2px solid var(--screen-border, #444);
+  border-radius: 12px;
+  z-index: 300;
+  padding: 10px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+}
+#settings-drawer.hidden { display: none; }
+.drawer-title {
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--accent-yellow);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.drawer-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 15px;
+  cursor: pointer;
+}
+.drawer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-size: 13px;
+  cursor: pointer;
+}
+.drawer-row:last-child { border-bottom: none; }
+.drawer-pill {
+  font-size: 10px;
+  font-weight: bold;
+  padding: 3px 10px;
+  border-radius: 10px;
+  background: #3a3f46;
+  color: #999;
+}
+.drawer-pill.on { background: var(--accent-green, #4ade80); color: #0a0f0a; }
+.drawer-foot {
+  font-size: 9.5px;
+  color: var(--text-dim);
+  margin-top: 8px;
+  text-align: center;
+}
+
+/* --- Auto night dim --- */
+body.night-dim #pokedex-device {
+  filter: brightness(var(--night-b, 0.55));
+  transition: filter 2s ease;
+}
+
+/* --- LiveATC button live state --- */
+#atc-btn.atc-live {
+  background: var(--accent-green, #4ade80);
+  color: #0a0f0a;
+  animation: atc-pulse 2s infinite;
+}
+@keyframes atc-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(74, 222, 128, 0); }
+}
+
+/* --- Hall of Fame --- */
+.rec-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.rec-card {
+  background: var(--screen-light, #1a2028);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 10px;
+}
+.rec-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--accent-blue);
+  margin-bottom: 3px;
+}
+.rec-value {
+  font-size: 19px;
+  font-weight: bold;
+  color: var(--accent-yellow);
+}
+.rec-sub {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Achievements --- */
+.ach-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.ach-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--screen-light, #1a2028);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 8px;
+  opacity: 0.55;
+}
+.ach-chip.unlocked { opacity: 1; border-color: var(--accent-yellow); }
+.ach-icon {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: #2a323c;
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ach-chip.unlocked .ach-icon { background: var(--accent-yellow); color: #0a0f0a; }
+.ach-chip.unlocked.ach-sea .ach-icon { background: var(--accent-blue); color: #fff; }
+.ach-chip.unlocked.ach-atmo .ach-icon { background: #7038F8; color: #fff; }
+.ach-chip.unlocked.ach-land .ach-icon { background: #78C850; color: #0a0f0a; }
+.ach-chip.unlocked.ach-ether .ach-icon { background: #9b59d0; color: #fff; }
+.ach-chip.unlocked.ach-storm .ach-icon { background: #ff6b6b; color: #fff; }
+.ach-chip.unlocked.ach-fam .ach-icon { background: #ff9f43; color: #0a0f0a; }
+.ach-body { flex: 1; min-width: 0; }
+.ach-body b { display: block; font-size: 12px; }
+.ach-body small { display: block; font-size: 10px; color: var(--text-dim); }
+.ach-bar {
+  display: block;
+  height: 4px;
+  background: #2a323c;
+  border-radius: 2px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+.ach-bar span { display: block; height: 100%; background: var(--accent-blue); }
+.ach-count { font-size: 10px; color: var(--text-dim); flex-shrink: 0; }
+.ach-chip.unlocked .ach-count { color: var(--accent-green, #4ade80); font-size: 14px; }
+
+/* --- Almanac --- */
+.alm-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 8px 4px 4px;
+}
+.alm-col { flex: 1; text-align: center; }
+.alm-num { font-size: 10px; color: var(--text-dim); margin-bottom: 2px; }
+.alm-bar { border-radius: 4px 4px 0 0; margin: 0 auto; width: 70%; }
+.alm-dow { font-size: 9px; color: var(--text-dim); margin-top: 3px; }
+
+/* --- Quiz --- */
+.quiz-card {
+  background: var(--screen-light, #1a2028);
+  border: 2px solid var(--screen-border, #444);
+  border-radius: 14px;
+  padding: 16px;
+  max-width: 620px;
+  margin: 8px auto;
+}
+.quiz-domain {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--accent-blue);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.quiz-q { font-size: 17px; font-weight: bold; margin-bottom: 14px; }
+.quiz-opts { display: grid; gap: 8px; }
+.quiz-opt {
+  background: #232b35;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.quiz-opt.correct { background: #14532d; border-color: var(--accent-green, #4ade80); }
+.quiz-opt.wrong { background: #58151c; border-color: #f87171; }
+.quiz-done { text-align: center; }
+.quiz-score { font-size: 42px; font-weight: bold; color: var(--accent-yellow); }
+.quiz-grade { font-size: 15px; margin: 8px 0 14px; }
+.quiz-done .day-summary-btn { margin: 4px; }
+
+/* --- Attract mode --- */
+#attract-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 8, 12, 0.96);
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+#attract-overlay.hidden { display: none; }
+#attract-card {
+  text-align: center;
+  max-width: 80%;
+  transition: opacity 0.35s ease;
+}
+.att-kicker {
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: var(--accent-blue);
+  margin-bottom: 12px;
+}
+.att-big {
+  font-size: 44px;
+  font-weight: bold;
+  color: var(--accent-yellow);
+  line-height: 1.1;
+}
+.att-sub { font-size: 16px; color: var(--text-dim); margin-top: 10px; }
+.att-fact { font-size: 20px; line-height: 1.5; color: var(--text); }
+.att-img {
+  max-width: 100%;
+  max-height: 55vh;
+  border-radius: 12px;
+  border: 2px solid var(--screen-border, #444);
+}
+#attract-hint {
+  position: absolute;
+  bottom: 26px;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: rgba(255,255,255,0.35);
+  animation: att-breathe 3s infinite;
+}
+@keyframes att-breathe { 0%,100% { opacity: 0.35; } 50% { opacity: 0.8; } }
+
+/* --- Day replay scrubber --- */
+#replay-bar {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(520px, 86%);
+  background: rgba(10, 15, 10, 0.92);
+  border: 2px solid var(--screen-border, #444);
+  border-radius: 12px;
+  z-index: 250;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+}
+#replay-bar.hidden { display: none; }
+#replay-bar .rt-btn { flex: 0 0 34px; }
+#replay-track {
+  flex: 1;
+  height: 8px;
+  background: #2a323c;
+  border-radius: 4px;
+  overflow: hidden;
+}
+#replay-progress { height: 100%; width: 0; background: var(--accent-yellow); }
+#replay-clock {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--accent-yellow);
+}
+
+/* ============================================================
+   PORTRAIT LAYOUT (15" 1080x1920 panel) — landscape untouched
+   ============================================================ */
+@media (orientation: portrait) {
+  body { font-size: 16px; }
+
+  /* Live view: map on top (taller), list below */
+  .live-layout { flex-direction: column; }
+  .live-radar {
+    order: -1;
+    width: 100%;
+    max-width: none;
+    position: static;
+  }
+  #map { height: 36vh; }
+  #radar { max-width: min(70vw, 480px); }
+  .live-list { max-height: none; flex: 1; }
+
+  /* Bigger touch targets */
+  .day-summary-btn { padding: 10px 14px; font-size: 14px; }
+  .rt-btn { padding: 10px 0; font-size: 13px; }
+  .contact-row { padding: 12px 8px; }
+  .mode-seg { padding: 8px 14px; font-size: 14px; }
+
+  /* Stats/summary grids collapse to one column */
+  .stats-columns { grid-template-columns: 1fr; }
+  .ds-cols, .ds-grid-2 { grid-template-columns: 1fr; }
+
+  /* Cards scale up a touch */
+  .rec-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+  .ach-grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+
+  .att-big { font-size: 60px; }
+  .att-fact { font-size: 26px; }
+}
+
+
+/* ============================================================
+   KBDR OPS BOARD — split-flap airport board look
+   ============================================================ */
+.board-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (orientation: portrait) { .board-cols { grid-template-columns: 1fr; } }
+.board-col {
+  background: #0b0e13;
+  border: 2px solid #23282f;
+  border-radius: 10px;
+  padding: 8px;
+  overflow: hidden;
+}
+.board-head {
+  font-size: 11px;
+  letter-spacing: 3px;
+  font-weight: bold;
+  color: #ffb824;
+  padding: 4px 6px 8px;
+  border-bottom: 1px solid #23282f;
+  margin-bottom: 4px;
+}
+.board-row {
+  display: grid;
+  grid-template-columns: 44px 82px 1fr 58px;
+  gap: 6px;
+  align-items: center;
+  padding: 7px 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 12px;
+}
+.board-row:nth-child(even) { background: rgba(255,255,255,0.02); }
+.board-time {
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  color: #ffb824;
+  font-size: 13px;
+}
+.board-ident {
+  font-weight: bold;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.board-detail {
+  color: var(--text-dim);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.board-status {
+  font-size: 9px;
+  font-weight: bold;
+  text-align: center;
+  border-radius: 4px;
+  padding: 3px 2px;
+  letter-spacing: 0.5px;
+}
+.st-seen { background: rgba(74, 222, 128, 0.16); color: #4ade80; }
+.st-sched { background: rgba(48, 167, 215, 0.16); color: #30A7D7; }
+.board-divider {
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  text-align: center;
+  padding: 6px 0 3px;
+}
+.board-empty { color: var(--text-dim); text-align: center; padding: 14px; font-size: 12px; }
+.board-note {
+  font-size: 9.5px;
+  color: var(--text-dim);
+  text-align: center;
+  margin-top: 8px;
+}
+
+/* ============================================================
+   AESTHETIC PASS — depth, glow, and polish (Fable's touches)
+   ============================================================ */
+
+/* CRT vignette: kept subtle + cheap (big blur radii tax the Pi at 1080p) */
+#pokedex-screen {
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.45);
+}
+
+/* Map markers: finger-sized tap targets; plain shadow (per-marker glow was
+   costly with 20 markers re-rendering every second) */
+.map-icon {
+  width: 36px;
+  height: 36px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6);
+  background: rgba(8, 12, 10, 0.94);
+}
+.map-icon .mi-num {
+  min-width: 16px;
+  height: 16px;
+  line-height: 16px;
+  font-size: 10.5px;
+  border-radius: 8px;
+}
+
+/* Contact rows: subtle depth + press feedback for the touchscreen */
+.contact-row {
+  transition: transform 0.08s ease, background 0.15s ease;
+}
+.contact-row:active {
+  transform: scale(0.985);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Cards lift slightly on touch */
+.dex-card, .rec-card, .ach-chip {
+  transition: transform 0.1s ease, border-color 0.2s ease;
+}
+.dex-card:active, .rec-card:active { transform: scale(0.97); }
+
+/* Action buttons: gradient sheen + press */
+.day-summary-btn {
+  background-image: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0) 55%);
+  transition: transform 0.08s ease, filter 0.15s ease;
+}
+.day-summary-btn:active { transform: scale(0.96); filter: brightness(1.2); }
+
+/* Mode segments: glossy active state */
+.mode-seg.active {
+  background-image: linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0) 60%);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+/* Toasts: solid shadow instead of frosted glass (backdrop-filter is one of
+   the most expensive effects a Pi can render at 1080p) */
+.toast {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+
+/* Weather strip: soft under-glow divider instead of a hard line */
+#weather-strip {
+  border-bottom: 1px solid rgba(120, 200, 120, 0.18);
+}
+
+/* (Radar phosphor drop-shadow removed — a filter on an 8fps-redrawn SVG was
+   pure GPU tax for a barely visible glow.) */
+
+/* ============================================================
+   TOWER LISTENING GUIDE (KBDR board)
+   ============================================================ */
+.atc-guide {
+  margin-top: 12px;
+  background: var(--screen-light, #1a2028);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 10px;
+}
+.atc-guide summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--accent-yellow);
+  list-style: none;
+}
+.atc-guide summary::before { content: '\25B8  '; color: var(--accent-blue); }
+.atc-guide[open] summary::before { content: '\25BE  '; }
+.guide-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+@media (orientation: portrait) { .guide-grid { grid-template-columns: 1fr; } }
+.guide-card {
+  background: rgba(0,0,0,0.25);
+  border-radius: 8px;
+  padding: 10px;
+}
+.guide-title {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent-blue);
+  margin-bottom: 6px;
+}
+.guide-line { display: flex; gap: 8px; padding: 4px 0; font-size: 12px; align-items: baseline; }
+.guide-line b { color: #ffb824; font-family: 'Courier New', monospace; flex-shrink: 0; }
+.guide-line span { color: var(--text-dim); font-size: 11px; }
+.guide-step { font-size: 12px; color: var(--text); padding: 4px 0; }
+.decoder { display: grid; gap: 2px; }
+.dec-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 38%) 1fr;
+  gap: 10px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.dec-row:nth-child(odd) { background: rgba(255,255,255,0.03); }
+.dec-p { color: var(--accent-green, #4ade80); font-weight: 600; }
+.dec-m { color: var(--text-dim); }
+.phon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+  gap: 4px;
+}
+.phon {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  background: rgba(0,0,0,0.25);
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+.phon b { color: var(--accent-yellow); margin-right: 5px; font-size: 12px; }
+
+/* ============================================================
+   LANDDEX — trains
+   ============================================================ */
+#mode-land.active {
+  background: #8B5A2B;
+  background-image: linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0) 60%);
+  color: #fff;
+}
+/* Four segments need slightly tighter padding on the 10" landscape panel */
+@media (max-width: 1024px) and (orientation: landscape) {
+  .mode-seg { padding: 5px 9px; font-size: 11px; }
+}
+
+/* Passing-now Amtrak cards */
+.pass-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--screen-light, #1a2028);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 6px;
+}
+.pass-card.pass-acela {
+  border-color: #FFD700;
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.15);
+}
+.pass-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.3);
+  border-radius: 9px;
+}
+.pass-body { flex: 1; min-width: 0; }
+.pass-name { font-size: 14px; font-weight: bold; }
+.pass-name b { color: var(--accent-yellow); }
+.pass-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pass-flash {
+  font-size: 9px;
+  font-weight: bold;
+  background: #FFD700;
+  color: #0a0f0a;
+  border-radius: 4px;
+  padding: 1px 5px;
+  vertical-align: middle;
+  animation: att-breathe 1.6s infinite;
+}
+.pass-stats { text-align: right; flex-shrink: 0; }
+.pass-speed { font-size: 16px; font-weight: bold; color: var(--accent-green, #4ade80); }
+.pass-dist { font-size: 10px; color: var(--text-dim); }
+
+/* ============================================================
+   COMPACT ACTION ROW + INFO MODAL + FORECAST CARDS
+   ============================================================ */
+/* Smaller side-by-side action chips (was full-width-ish buttons) */
+.action-row { gap: 5px; margin-bottom: 6px; }
+.action-row .day-summary-btn {
+  /* The base button is width:100% (block) — reset it so these sit as small
+     side-by-side pills instead of stacked full-width rows. */
+  width: auto;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  font-size: 11px;
+  border-radius: 14px;
+}
+.action-row .day-summary-btn svg { width: 12px; height: 12px; }
+
+/* Tap-for-details modal */
+#info-modal {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#info-modal.hidden { display: none; }
+#info-modal-card {
+  background: #10141a;
+  border: 2px solid var(--screen-border, #444);
+  border-radius: 14px;
+  padding: 16px;
+  width: min(420px, 86%);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.7);
+}
+#info-modal-title { font-size: 16px; font-weight: bold; margin-bottom: 8px; }
+#info-modal-body { font-size: 13px; line-height: 1.5; color: var(--text); }
+#info-modal-body p { margin: 6px 0; }
+.im-chip {
+  display: inline-block;
+  border: 1px solid #666;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: bold;
+  margin-right: 6px;
+  vertical-align: middle;
+  background: #222a33;
+}
+.im-chip.im-earned { background: var(--accent-yellow); color: #0a0f0a; border-color: var(--accent-yellow); }
+
+/* Forecast: climate record hero */
+.fc-record {
+  background: linear-gradient(135deg, #1a2028, #141a22);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+.fc-record-title {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent-blue);
+  margin-bottom: 6px;
+}
+.fc-record-vals { display: flex; gap: 22px; font-size: 15px; }
+.fc-record-vals b { font-size: 22px; }
+.fc-record-vals small { color: var(--text-dim); }
+
+/* Forecast: day cards grid */
+/* Hour-by-hour strip (horizontal scroll) */
+.fc-hourly {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+.fch {
+  min-width: 64px;
+  flex-shrink: 0;
+  text-align: center;
+  background: var(--screen-light, #1a2028);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 8px 4px 6px;
+}
+.fch-t { font-size: 10px; color: var(--text-dim); margin-bottom: 2px; }
+.fch-i svg { width: 22px; height: 22px; }
+.fch b { font-size: 14px; color: var(--text); display: block; }
+.fch-p { font-size: 10px; color: #30A7D7; min-height: 13px; }
+
+.fc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.fc-card {
+  background: var(--screen-light, #1a2028);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 10px 8px;
+  text-align: center;
+}
+.fc-day { font-size: 11px; font-weight: bold; color: var(--accent-blue); min-height: 26px; }
+.fc-ic { margin: 4px 0; }
+.fc-temps b { font-size: 18px; color: var(--text); }
+.fc-temps span { font-size: 13px; color: var(--text-dim); margin-left: 6px; }
+.fc-short { font-size: 10px; color: var(--text-dim); margin-top: 3px; min-height: 24px; }
+.fc-meta { font-size: 9px; color: var(--text-faint, #667); margin-top: 2px; }
+.fc-alert {
+  margin-top: 5px;
+  font-size: 9px;
+  font-weight: bold;
+  color: #ffd24a;
+  background: rgba(255, 210, 74, 0.12);
+  border: 1px solid rgba(255, 210, 74, 0.4);
+  border-radius: 6px;
+  padding: 2px 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Rail History timeline cards --- */
+.hist-card {
+  display: flex;
+  gap: 12px;
+  background: var(--screen-light, #1a2028);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+}
+.hist-era {
+  flex-shrink: 0;
+  width: 58px;
+  font-family: 'Courier New', monospace;
+  font-size: 15px;
+  font-weight: bold;
+  color: #ffb824;
+}
+.hist-body b { font-size: 13px; }
+.hist-body p { font-size: 11.5px; color: var(--text-dim); margin: 3px 0 0; line-height: 1.45; }
+
+/* --- Dex "List (fast)" mode: photo-free compact rows --- */
+.dex-grid.dex-as-list { display: block; }
+.dexl-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  cursor: pointer;
+}
+.dexl-row:active { background: rgba(255,255,255,0.05); }
+.dexl-num {
+  width: 52px;
+  flex-shrink: 0;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--accent-yellow);
+}
+.dexl-ic {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dexl-main { flex: 1; min-width: 0; }
+.dexl-main b { font-size: 13px; display: block; }
+.dexl-main small {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dexl-count { font-size: 12px; color: var(--accent-blue); font-weight: bold; flex-shrink: 0; }
+
+/* ============================================================
+   GRAND CENTRAL VIEW + MODE EASTER EGGS
+   ============================================================ */
+/* Line-color dot on the GCT board */
+.line-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+/* NYC subway bullets */
+.subway-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 4px 0 8px; }
+.sub-bullet {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: bold;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Easter-egg buttons only show in their own mode */
+#kraken-btn { display: none; }
+body.sea-mode #kraken-btn { display: inline-flex; }
+body.sea-mode #biplane-btn { display: none; }
+body.sea-mode #kbdr-btn, body.sea-mode #replay-btn { display: none; }  /* air-only tools */
+
+/* Biplane: putters across left -> right with a little bob */
+#biplane-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 550;
+  display: none;
+}
+#biplane-overlay.fly { display: block; }
+.biplane-craft { position: absolute; top: 30%; left: -140px; }
+#biplane-overlay.fly .biplane-craft { animation: biplane-fly 2.2s ease-in-out forwards; }
+@keyframes biplane-fly {
+  0%   { transform: translateX(0) translateY(0) rotate(2deg); }
+  30%  { transform: translateX(38vw) translateY(-22px) rotate(-3deg); }
+  60%  { transform: translateX(68vw) translateY(10px) rotate(3deg); }
+  100% { transform: translateX(115vw) translateY(-14px) rotate(-2deg); }
+}
+
+/* Kraken: rises from the deep, wiggles, sinks back */
+#kraken-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 550;
+  display: none;
+}
+#kraken-overlay.rise { display: block; }
+.kraken-beast { position: absolute; bottom: -150px; left: 50%; margin-left: -65px; }
+#kraken-overlay.rise .kraken-beast { animation: kraken-rise 2.4s ease-in-out forwards; }
+@keyframes kraken-rise {
+  0%   { transform: translateY(0) rotate(0deg); }
+  35%  { transform: translateY(-46vh) rotate(-8deg); }
+  55%  { transform: translateY(-44vh) rotate(8deg); }
+  75%  { transform: translateY(-46vh) rotate(-6deg); }
+  100% { transform: translateY(10vh) rotate(0deg); }
+}
+
+/* Steam loco: chugs along the bottom edge */
+#loco-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 550;
+  display: none;
+}
+#loco-overlay.chug { display: block; }
+.loco-train { position: absolute; bottom: 8%; left: -140px; }
+#loco-overlay.chug .loco-train { animation: loco-chug 2.8s linear forwards; }
+@keyframes loco-chug {
+  0%   { transform: translateX(0) translateY(0); }
+  25%  { transform: translateX(28vw) translateY(-2px); }
+  50%  { transform: translateX(56vw) translateY(0); }
+  75%  { transform: translateX(84vw) translateY(-2px); }
+  100% { transform: translateX(115vw) translateY(0); }
+}
+
+/* --- traintracker.live embed overlay --- */
+#tt-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 650;
+  background: #0b0e13;
+  display: flex;
+  flex-direction: column;
+}
+#tt-overlay.hidden { display: none; }
+#tt-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--accent-yellow);
+  border-bottom: 1px solid #23282f;
+  flex-shrink: 0;
+}
+#tt-frame { flex: 1; width: 100%; border: none; background: #0b0e13; }
+#tt-note {
+  flex-shrink: 0;
+  font-size: 9.5px;
+  color: var(--text-dim);
+  text-align: center;
+  padding: 4px;
+}
+
+/* Native live-train map fills the old iframe slot */
+#ttmap { flex: 1; width: 100%; background: #0b0e13; }
+
+/* Inline live train map on the Grand Central view */
+#gctmap {
+  width: 100%;
+  height: 300px;
+  border: 2px solid #23282f;
+  border-radius: 10px;
+  background: #0b0e13;
+}
+@media (orientation: portrait) { #gctmap { height: 36vh; } }
+
+/* The loco SVG is drawn facing left — mirror it so it chugs nose-first */
+.loco-train svg { transform: scaleX(-1); }
+
+/* ============================================================
+   ETHERDEX + VOICE
+   ============================================================ */
+#mode-ether.active {
+  background: #7859c4;
+  background-image: linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0) 60%);
+  color: #fff;
+}
+/* Five segments now — tighten further on the 10" landscape panel */
+@media (max-width: 1024px) and (orientation: landscape) {
+  .mode-seg { padding: 5px 7px; font-size: 10.5px; }
+}
+
+/* Live-map train markers (trolley = MNR, bullet = Amtrak) */
+.leaflet-div-icon.train-mk, .train-mk {
+  background: transparent;
+  border: none;
+}
+.train-mk svg { filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8)); }
+
+/* Tuner preset row */
+.tuner-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.tuner-btn { padding: 7px 13px !important; font-size: 12px !important; }
+
+/* World Radio — Points of Interest cards */
+.poi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.poi-card {
+  background: var(--screen-light, #1a2028);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: inherit;
+  transition: transform 0.1s;
+}
+.poi-card:active { transform: scale(0.97); }
+.poi-card b { font-size: 14px; color: var(--accent-yellow); }
+.poi-card small {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--accent-blue);
+}
+.poi-card span { font-size: 11.5px; color: var(--text-dim); line-height: 1.35; }
+
+/* World Radio: kid-sized country flags, station cards, postcards */
+.country-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.country-more { max-height: 360px; overflow-y: auto; }
+.country-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--screen-light, #1a2028);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 11px 12px;
+  cursor: pointer;
+  color: var(--text);
+  font-family: inherit;
+  text-align: left;
+  min-height: 52px;
+}
+.country-card:active { transform: scale(0.97); background: #232b36; }
+.country-card img {
+  width: 44px;
+  height: auto;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  flex-shrink: 0;
+}
+.country-card span { font-size: 13px; font-weight: bold; line-height: 1.25; }
+.country-card small { display: block; color: var(--text-dim); font-size: 10px; font-weight: normal; }
+
+.stn-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.stn-card {
+  background: var(--screen-light, #1a2028);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 12px;
+  cursor: pointer;
+  color: var(--text);
+  font-family: inherit;
+  text-align: left;
+}
+.stn-card:active { transform: scale(0.97); background: #232b36; }
+.stn-name {
+  font-size: 15px;
+  font-weight: bold;
+  margin-bottom: 7px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stn-row { display: flex; align-items: center; justify-content: space-between; }
+.genre-chip {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: bold;
+  color: #0a0f0a;
+  padding: 3px 11px;
+  border-radius: 10px;
+}
+.stn-votes { font-size: 11px; color: var(--text-dim); }
+
+.postcards {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 10px;
+  -webkit-overflow-scrolling: touch;
+}
+.postcards img {
+  height: 110px;
+  width: auto;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  flex-shrink: 0;
+}
+@media (min-width: 1500px) and (orientation: landscape) {
+  .country-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+  .country-card span { font-size: 15px; }
+  .country-card img { width: 52px; }
+  .stn-name { font-size: 17px; }
+  .genre-chip { font-size: 13px; padding: 4px 13px; }
+  .postcards img { height: 160px; }
+}
+
+/* Local scanner feed cards (HAM it Up view) */
+.scanner-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.scanner-card {
+  background: var(--screen-light, #1a2028);
+  border: 1px solid rgba(255,107,107,0.3);
+  border-radius: 10px;
+  padding: 11px 13px;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.scanner-card:active { transform: scale(0.97); background: #2a2024; }
+.scanner-card b { font-size: 14px; color: #ff8a80; }
+.scanner-card span { font-size: 11px; color: var(--text-dim); line-height: 1.35; }
+@media (min-width: 1500px) and (orientation: landscape) {
+  .scanner-card b { font-size: 16px; }
+  .scanner-card span { font-size: 13px; }
+}
+
+/* Recents + Favorites shelves (World Radio & HAM it Up) */
+.shelf { margin-top: 14px; }
+.shelf-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--screen-light, #1a2028);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+}
+.shelf-main {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  overflow: hidden;
+}
+.shelf-main b { font-size: 13px; color: var(--text); white-space: nowrap; }
+.shelf-main span {
+  font-size: 11px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shelf-star {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 20px;
+  line-height: 1;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.shelf-star.on { color: var(--accent-yellow); }
+.shelf-star:active { transform: scale(1.25); }
+
+/* Journeys — followed craft tracked worldwide */
+#journeymap {
+  width: 100%;
+  height: 340px;
+  border: 2px solid #23282f;
+  border-radius: 10px;
+  background: #0b0e13;
+  margin-bottom: 10px;
+}
+.jrny-chip {
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: 8px;
+  background: #3a3f46;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+.jrny-chip.live { background: rgba(74,222,128,0.15); color: #4ade80; border: 1px solid #4ade80; }
+.jrny-chip.dark { background: rgba(255,107,107,0.12); color: #ff6b6b; border: 1px solid #ff6b6b; }
+@media (min-width: 1500px) and (orientation: landscape) {
+  #journeymap { height: 480px; }
+}
+
+/* Severe weather takeover */
+#wx-takeover {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  background: rgba(6, 8, 12, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.wxa-card {
+  background: #1a1114;
+  border: 3px solid #ff6b6b;
+  border-radius: 16px;
+  padding: 22px 26px;
+  max-width: 640px;
+  max-height: 86vh;
+  overflow-y: auto;
+  box-shadow: 0 0 70px rgba(255, 107, 107, 0.4);
+  animation: partyPop 0.4s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+.wxa-title {
+  font-size: 22px;
+  font-weight: bold;
+  color: #ff6b6b;
+  letter-spacing: 2px;
+  text-align: center;
+  margin-bottom: 12px;
+  animation: wxaBlink 1.2s step-end infinite;
+}
+@keyframes wxaBlink { 50% { opacity: 0.45; } }
+.wxa-alert { padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.wxa-alert.big .wxa-event { font-size: 17px; }
+.wxa-event { font-size: 14px; font-weight: bold; color: var(--text); }
+.wxa-sev {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: #ff6b6b;
+  color: #1a1114;
+  margin-left: 6px;
+  vertical-align: middle;
+  letter-spacing: 1px;
+}
+.wxa-head { font-size: 12.5px; color: var(--text-dim); margin-top: 3px; line-height: 1.45; }
+.wxa-ack {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  padding: 15px;
+  font-size: 16px;
+  font-weight: bold;
+  font-family: inherit;
+  color: #0a0f0a;
+  background: var(--accent-yellow);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+}
+.wxa-ack:active { transform: scale(0.97); }
+
+/* Hourly strip: the hour we're in right now */
+.fch.now {
+  border-color: var(--accent-yellow);
+  box-shadow: 0 0 8px rgba(255, 203, 5, 0.35);
+}
+.fch.now .fch-t { color: var(--accent-yellow); font-weight: bold; letter-spacing: 1px; }
+
+/* Games arcade + trainer cards */
+.trainer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.trainer-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  background: var(--screen-light, #1a2028);
+  border: 2px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.trainer-card.active { border-color: var(--accent-yellow); box-shadow: 0 0 14px rgba(255,203,5,0.25); }
+.trainer-avatar {
+  width: 46px; height: 46px; flex-shrink: 0;
+  border-radius: 50%;
+  background: #232b36;
+  color: var(--accent-yellow);
+  display: flex; align-items: center; justify-content: center;
+}
+.trainer-avatar svg { width: 26px; height: 26px; }
+.trainer-name { font-size: 14px; font-weight: bold; color: var(--text); }
+.playing-chip { font-size: 9px; color: #0a0f0a; background: var(--accent-yellow); border-radius: 7px; padding: 1px 7px; letter-spacing: 1px; vertical-align: middle; }
+.trainer-stats { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+.trainer-trophies { margin-top: 3px; display: flex; flex-wrap: wrap; gap: 4px; }
+.trophy { font-size: 10px; color: var(--text-dim); background: #232b36; border-radius: 7px; padding: 2px 7px; }
+.trophy b { color: var(--accent-yellow); }
+.avatar-edit {
+  position: absolute; top: 6px; right: 8px;
+  background: transparent; border: none; color: var(--text-dim);
+  font-size: 14px; cursor: pointer; padding: 4px;
+}
+.avatar-grid { display: grid; grid-template-columns: repeat(4, 64px); gap: 10px; justify-content: center; margin-top: 8px; }
+.avatar-btn {
+  height: 60px; border-radius: 14px; cursor: pointer;
+  background: var(--screen-light, #1a2028); border: 1px solid rgba(255,255,255,0.15);
+  color: var(--accent-yellow); display: flex; align-items: center; justify-content: center;
+}
+.avatar-btn svg { width: 30px; height: 30px; }
+
+.game-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.game-tile {
+  background: var(--screen-light, #1a2028);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 14px;
+  cursor: pointer;
+  color: var(--text);
+  font-family: inherit;
+  text-align: left;
+}
+.game-tile:active { transform: scale(0.97); background: #232b36; }
+.game-tile b { display: block; font-size: 15px; color: var(--accent-yellow); margin-bottom: 4px; }
+.game-tile span { font-size: 11.5px; color: var(--text-dim); line-height: 1.4; }
+
+.game-head { text-align: center; font-size: 13px; color: var(--text-dim); margin: 10px 0 8px; }
+.wtp-photo { text-align: center; }
+.wtp-photo img { max-width: 100%; max-height: 300px; border-radius: 12px; border: 2px solid #23282f; }
+.wtc-flag { text-align: center; }
+.wtc-flag img { width: 260px; max-width: 90%; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.6); }
+.game-answers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.game-answer {
+  padding: 14px 10px;
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--text);
+  background: var(--screen-light, #1a2028);
+  border: 2px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.game-answer:active { transform: scale(0.97); }
+.game-answer.right { border-color: #4ade80; background: rgba(74,222,128,0.15); }
+.game-answer.wrong { border-color: #ff6b6b; background: rgba(255,107,107,0.15); }
+/* iSpy — Where in the World? */
+.ispy-cam {
+  position: relative;
+  text-align: center;
+  margin-bottom: 10px;
+  background: #0b0e13;
+  border-radius: 12px;
+  padding: 6px 0;
+}
+/* Windy previews are ~400px wide — keep their TRUE aspect ratio and only a
+   gentle upscale, or the scene turns to stretched mush. */
+.ispy-cam img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 440px;
+  border-radius: 10px;
+  border: 2px solid #23282f;
+}
+.ispy-live {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(10, 15, 10, 0.8);
+  color: var(--text);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 9px;
+  letter-spacing: 1px;
+}
+.ispy-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.ispy-choice {
+  padding: 12px;
+  border-radius: 12px;
+  border: 2px solid rgba(255,255,255,0.12);
+  background: var(--screen-light, #1a2028);
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: center;
+}
+.ispy-choice b { display: block; font-size: 16px; }
+.ispy-choice span { font-size: 12px; color: var(--text-dim); }
+.ispy-choice:active { transform: scale(0.96); }
+.ispy-choice.right { border-color: #4ade80; background: rgba(74,222,128,0.15); }
+.ispy-choice.wrong { border-color: #ff6b6b; background: rgba(255,107,107,0.15); opacity: 0.6; }
+.ispy-map-inplace, .ispy-motion {
+  width: 100%;
+  height: 340px;
+  border-radius: 12px;
+  border: 2px solid #23282f;
+  background: #0b0e13;
+  display: block;
+}
+.ispy-reveal { margin-top: 10px; }
+@media (min-width: 1500px) and (orientation: landscape) {
+  .ispy-cam img { max-height: 560px; }
+  .ispy-choice b { font-size: 18px; }
+  .ispy-map-inplace, .ispy-motion { height: 460px; }
+}
+
+/* What Is This? — giant buttons for the littlest fingers */
+.wit-answers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+.wit-answer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 76px;
+  padding: 12px;
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--text);
+  background: var(--screen-light, #1a2028);
+  border: 3px solid rgba(255,255,255,0.14);
+  border-radius: 16px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.wit-answer:active { transform: scale(0.96); }
+.wit-answer.right { border-color: #4ade80; background: rgba(74,222,128,0.18); }
+.wit-answer.wrong { border-color: #ff6b6b; background: rgba(255,107,107,0.18); }
+.wit-ic { color: var(--accent-yellow); display: inline-flex; }
+.wit-ic svg { width: 34px; height: 34px; }
+@media (min-width: 1500px) and (orientation: landscape) {
+  .wit-answer { min-height: 90px; font-size: 21px; }
+  .wit-ic svg { width: 42px; height: 42px; }
+}
+
+/* Morse Academy: big friendly dot-dash glyphs */
+.morse-visual {
+  text-align: center;
+  font-size: 34px;
+  letter-spacing: 4px;
+  color: var(--accent-yellow);
+  margin: 6px 0 10px;
+  min-height: 44px;
+}
+.morse-mini { font-size: 13px; color: var(--text-dim); margin-top: 4px; letter-spacing: 2px; }
+.game-answer.right .morse-mini { color: #4ade80; }
+
+/* Map Master */
+.mapm-map {
+  height: 380px;
+  border-radius: 12px;
+  border: 2px solid #23282f;
+  background: #0b0e13;
+  cursor: crosshair;
+}
+@media (min-width: 1500px) and (orientation: landscape) {
+  .mapm-map { height: 480px; }
+  .morse-visual { font-size: 42px; }
+}
+
+.game-over { text-align: center; padding: 18px 0; }
+.game-score { font-size: 52px; font-weight: bold; color: var(--accent-yellow); }
+
+.fm-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.fm-card {
+  min-height: 86px;
+  border-radius: 12px;
+  border: 2px solid rgba(255,255,255,0.12);
+  background: #232b36;
+  color: var(--accent-yellow);
+  font-size: 30px;
+  font-weight: bold;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+}
+.fm-card img { width: 74%; border-radius: 4px; }
+.fm-card small { font-size: 9px; color: var(--text-dim); }
+.fm-card.won { border-color: #4ade80; opacity: 0.85; }
+
+/* Robot Forecast-Off cards */
+.robot-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+.robot-card {
+  background: var(--screen-light, #1a2028);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: 10px;
+  text-align: center;
+}
+.robot-name { font-size: 10.5px; color: var(--text-dim); margin-bottom: 3px; }
+.robot-card b { font-size: 22px; color: var(--accent-blue); }
+
+/* Windy wind-map embed */
+#windy-frame {
+  width: 100%;
+  height: 430px;
+  border-radius: 10px;
+  border: 2px solid #23282f;
+  background: #0b0e13;
+}
+@media (min-width: 1500px) and (orientation: landscape) {
+  #windy-frame { height: 560px; }
+  .robot-card b { font-size: 26px; }
+}
+
+.wx-dial { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 14px 0; }
+.wx-temp { font-size: 56px; font-weight: bold; color: var(--accent-yellow); min-width: 130px; text-align: center; }
+.wx-step {
+  width: 66px; height: 66px; border-radius: 50%;
+  font-size: 34px; font-weight: bold; cursor: pointer;
+  background: var(--screen-light, #1a2028); color: var(--text);
+  border: 2px solid rgba(255,255,255,0.15); font-family: inherit;
+}
+.wx-step:active { transform: scale(0.92); background: var(--accent-blue); }
+@media (min-width: 1500px) and (orientation: landscape) {
+  .fm-grid { grid-template-columns: repeat(6, 1fr); }
+  .game-answer { font-size: 16px; padding: 17px 12px; }
+  .game-tile b { font-size: 17px; }
+  .wtp-photo img { max-height: 380px; }
+}
+
+/* Daily & weekly challenges */
+.chal-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--screen-light, #1a2028);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-left: 3px solid var(--accent-yellow);
+  border-radius: 10px;
+  padding: 9px 12px;
+  margin-bottom: 6px;
+}
+.chal-row.done { border-left-color: #4ade80; opacity: 0.85; }
+.chal-main { flex: 1; min-width: 0; }
+.chal-main b { font-size: 14px; color: var(--text); margin-right: 8px; }
+.chal-main span { font-size: 11.5px; color: var(--text-dim); }
+.chal-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: #2a313b;
+  margin-top: 6px;
+  overflow: hidden;
+}
+.chal-bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent-yellow);
+  border-radius: 3px;
+  transition: width 0.6s;
+}
+.chal-row.done .chal-bar i { background: #4ade80; }
+.chal-right { font-size: 15px; font-weight: bold; color: var(--accent-yellow); white-space: nowrap; }
+@media (min-width: 1500px) and (orientation: landscape) {
+  .chal-main b { font-size: 16px; }
+  .chal-main span { font-size: 13px; }
+}
+
+/* Achievement celebration — the unlock MOMENT */
+.ach-party {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.ach-party-card {
+  background: #141a22;
+  border: 3px solid var(--accent-yellow);
+  border-radius: 18px;
+  padding: 26px 36px;
+  text-align: center;
+  animation: partyPop 0.45s cubic-bezier(0.2, 1.6, 0.4, 1);
+  box-shadow: 0 0 70px rgba(255, 203, 5, 0.35);
+}
+.ach-party-kicker { font-size: 12px; letter-spacing: 3px; color: var(--accent-yellow); margin-bottom: 10px; }
+.ach-party-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 54px;
+  height: 54px;
+  padding: 0 12px;
+  border-radius: 14px;
+  background: var(--accent-yellow);
+  color: #0a0f0a;
+  font-weight: bold;
+  font-size: 19px;
+  margin-bottom: 10px;
+}
+.ach-party-title { font-size: 26px; font-weight: bold; color: var(--text); }
+.ach-party-desc { font-size: 14px; color: var(--text-dim); margin-top: 6px; }
+.ach-party-out { opacity: 0; transition: opacity 0.5s; }
+@keyframes partyPop { from { transform: scale(0.4); opacity: 0; } }
+.confetti {
+  position: absolute;
+  top: -14px;
+  width: 10px;
+  height: 16px;
+  border-radius: 2px;
+  animation: confettiFall 3.6s linear forwards;
+}
+@keyframes confettiFall { to { transform: translateY(110vh) rotate(720deg); } }
+
+/* Kid-language line on live rows */
+.contact-kid { font-size: 11px; color: #98D8D8; margin-top: 1px; }
+@media (min-width: 1500px) and (orientation: landscape) {
+  .contact-kid { font-size: 13px; }
+  .ach-party-title { font-size: 32px; }
+}
+
+/* Volume slider (status bar, appears with the stop button) */
+#vol-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-dim);
+}
+#vol-wrap.hidden { display: none; }
+#vol-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 110px;
+  height: 28px;
+  background: transparent;
+  cursor: pointer;
+}
+#vol-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: #3a3f46;
+}
+#vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent-yellow);
+  border: 2px solid #0a0f0a;
+  margin-top: -9px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.6);
+}
+#vol-slider::-moz-range-track { height: 6px; border-radius: 3px; background: #3a3f46; }
+#vol-slider::-moz-range-thumb {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--accent-yellow); border: 2px solid #0a0f0a;
+}
+@media (min-width: 1500px) and (orientation: landscape) {
+  #vol-slider { width: 150px; }
+}
+
+/* Admin PIN pad (in the info modal) */
+.pin-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 74px);
+  gap: 10px;
+  justify-content: center;
+  margin-top: 10px;
+}
+.pin-btn {
+  height: 58px;
+  font-size: 22px;
+  font-weight: bold;
+  color: var(--text);
+  background: var(--screen-light, #1a2028);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.pin-btn:active { background: var(--accent-blue); transform: scale(0.95); }
+@media (min-width: 1500px) and (orientation: landscape) {
+  .shelf-main b { font-size: 15px; }
+  .shelf-main span { font-size: 13px; }
+  .shelf-star { font-size: 26px; padding: 6px 12px; }
+  .shelf-row { padding: 10px 12px; }
+}
+
+/* World Radio map + band chips */
+#radiomap {
+  width: 100%;
+  height: 260px;
+  border: 2px solid #23282f;
+  border-radius: 10px;
+  background: #0b0e13;
+  margin-bottom: 8px;
+}
+@media (orientation: portrait) { #radiomap { height: 32vh; } }
+#radio-country {
+  background: #0d1117;
+  color: var(--text);
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+.band-chip {
+  background: #222a33;
+  color: var(--text-dim);
+  border: 1px solid #444;
+  border-radius: 14px;
+  padding: 6px 13px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.band-chip.on {
+  background: #7859c4;
+  color: #fff;
+  border-color: #9b7fe0;
+  box-shadow: 0 0 8px rgba(120, 89, 196, 0.4);
+}
+
+/* StormDex stat chips */
+.storm-stats { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 5px; }
+.storm-stats span {
+  font-size: 10px;
+  font-weight: bold;
+  color: var(--text-dim);
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  padding: 2px 7px;
+}
+
+/* ============================================================
+   BIG SCREEN (14" 1080p landscape) — maps go half-screen,
+   everything breathes a little more
+   ============================================================ */
+@media (min-width: 1500px) and (orientation: landscape) {
+  body { font-size: 15px; }
+
+  /* Sky/Sea live view: the map IS the show — 78% wide, fills the height */
+  .live-radar { width: 78%; max-width: none; }
+  #map { height: calc(100vh - 330px); min-height: 620px; }
+  #radar { max-width: 520px; }
+
+  /* Touch-native controls now that the screen answers back */
+  .pokedex-btn { padding: 6px 16px; }
+  .pokedex-btn-label { font-size: 11px; }
+  #gear-btn svg { width: 22px; height: 22px; }
+  .band-chip { padding: 9px 17px; font-size: 13px; }
+  .drawer-row { padding: 12px 6px; font-size: 15px; }
+  .leaflet-control-zoom a {
+    width: 38px !important;
+    height: 38px !important;
+    line-height: 38px !important;
+    font-size: 20px !important;
+  }
+  .quiz-opt { padding: 15px; font-size: 15px; }
+  .sub-bullet { width: 30px; height: 30px; font-size: 15px; }
+
+  /* The other maps grow to match their new real estate */
+  #gctmap { height: 520px; }
+  #radiomap { height: 420px; }
+
+  /* Ticker: actually readable from across the room */
+  #fact-ticker { height: 36px; border-radius: 8px; }
+  #fact-ticker-track { font-size: 17px; }
+
+  /* Match the ticker's readability everywhere it matters */
+  .screen-title { font-size: 22px; }
+  .screen-subtitle { font-size: 13px; }
+  .contact-callsign { font-size: 17px; }
+  .contact-model, .contact-route { font-size: 13px; }
+  .distance-display { font-size: 14px; }
+  .board-time, .board-ident { font-size: 15px; }
+  .board-detail { font-size: 13px; }
+  .atmo-line { font-size: 15px; }
+  .pass-name { font-size: 16px; }
+  .pass-sub, .rec-sub { font-size: 12.5px; }
+  .rec-value { font-size: 22px; }
+  .dexl-main b { font-size: 15px; }
+  .dex-section-title { font-size: 15px; }
+  .hist-body b { font-size: 15px; }
+  .hist-body p { font-size: 13px; }
+  .guide-line, .dec-row { font-size: 13.5px; }
+
+  /* Touch targets + chrome scale up a notch */
+  .mode-seg { padding: 7px 15px; font-size: 13px; }
+  .contact-row { padding: 10px 8px; }
+  .action-row .day-summary-btn { font-size: 12px; padding: 6px 13px; }
+  .rt-btn { padding: 8px 0; font-size: 12px; }
+  .fc-grid { grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); }
+  .rec-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+  .fch { min-width: 76px; }
+  .fch b { font-size: 16px; }
+  .fch-t, .fch-p { font-size: 12px; }
+}
+
+/* Grand Central two-column + Road live map */
+.gct-layout { display: flex; flex-direction: column-reverse; gap: 8px; }
+.gct-main { flex: 1; min-width: 0; }
+.gct-side { width: 100%; }
+#roadmap {
+  width: 100%;
+  height: 300px;
+  border: 2px solid #23282f;
+  border-radius: 10px;
+  background: #0b0e13;
+}
+@media (orientation: portrait) { #roadmap { height: 34vh; } }
+
+@media (min-width: 1500px) and (orientation: landscape) {
+  /* Grand Central: content left, map right — half the screen, stays put
+     while the timeline scrolls */
+  .gct-layout { flex-direction: row; align-items: flex-start; }
+  .gct-side { width: 50%; position: sticky; top: 0; }
+  #gctmap { height: 520px; }
+  /* Road: the corridor map goes big too */
+  #roadmap { height: 440px; }
+}
+
+/* Global audio stop button (status bar) */
+#global-stop {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(220, 10, 45, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  border-radius: 12px;
+  padding: 4px 11px;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+#global-stop.hidden { display: none; }
+.gs-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4ade80;
+  animation: att-breathe 1.6s infinite;
+}
+@media (min-width: 1500px) { #global-stop { padding: 7px 14px; font-size: 13px; } }
+
+/* Spotter credit modal */
+.spotter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 10px 0;
+}
+.spotter-btn {
+  background: var(--accent-blue);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 16px 6px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.spotter-btn:active { transform: scale(0.95); filter: brightness(1.2); }
+
+/* EtherDex residents row (the furniture, folded away) */
+.resident-row {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  background: rgba(120, 89, 196, 0.1);
+  border: 1px solid rgba(120, 89, 196, 0.3);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 6px 0;
+}
+.resident-row b { color: var(--text); }
+
+/* ============================================================
+   BIG SCREEN pass 2: messages & animations sized for the 14"
+   ============================================================ */
+@media (min-width: 1500px) and (orientation: landscape) {
+  /* Status messages ("Dart in the air…", "The ether is quiet…") */
+  .ds-empty { font-size: 17px; line-height: 1.6; padding: 28px 20px; }
+  #radio-now { font-size: 16px; }
+  .poi-row { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+  .poi-card b { font-size: 16px; }
+  .poi-card small { font-size: 11px; }
+  .poi-card span { font-size: 13px; }
+  .board-note { font-size: 12px; }
+  .board-empty { font-size: 14px; }
+  .atmo-tip { font-size: 14.5px; line-height: 1.55; }
+  .atmo-sub { font-size: 13px; }
+  .resident-row { font-size: 14px; padding: 10px 12px; }
+
+  /* Toasts readable from the couch */
+  .toast { font-size: 16px; padding: 14px 20px; }
+
+  /* The flying creatures grow into the room */
+  .ufo-craft svg { width: 150px; }
+  .biplane-craft svg { width: 175px; }
+  .kraken-beast svg { width: 210px; }
+  .loco-train svg { width: 190px; }
+
+  /* Attract mode fills the bigger canvas */
+  .att-big { font-size: 58px; }
+  .att-sub { font-size: 19px; }
+  .att-fact { font-size: 24px; line-height: 1.5; }
+  .att-kicker { font-size: 14px; }
+}
+
+/* World clocks strip (center of the status bar) + local date */
+#world-clocks {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.wc-item { flex-shrink: 0; }
+.wc-city { font-size: 9px; letter-spacing: 1px; color: rgba(255,255,255,0.5); margin-right: 3px; }
+.clock-date { font-size: 11px; color: rgba(255,255,255,0.65); margin-left: 6px; font-family: inherit; }
+
+@media (max-width: 1200px) {
+  /* Small screens: drop the middle world clocks to avoid crowding */
+  .wc-item:nth-child(n+4) { display: none; }
+}
+
+/* ============================================================
+   BIG SCREEN pass 3: the headline strip finally readable
+   ============================================================ */
+@media (min-width: 1500px) and (orientation: landscape) {
+  /* Weather/tide/location strip: was 9-11px inline — force it readable */
+  #weather-strip { min-height: 44px; padding: 8px 16px; gap: 14px; }
+  #weather-strip .weather-item,
+  #weather-strip .weather-item span,
+  #weather-strip .weather-item div,
+  #weather-strip div { font-size: 15px !important; }
+  #weather-strip .weather-temp { font-size: 17px !important; }
+  #weather-strip svg { width: 18px; height: 18px; }
+
+  /* Status bar: clocks + date sized for distance */
+  #world-clocks { font-size: 15px; gap: 18px; }
+  .wc-city { font-size: 10.5px; }
+  #clock-display { font-size: 19px; }
+  .clock-date { font-size: 13px; }
+
+  /* Alert chips readable too */
+  .alert-chip { font-size: 13px; padding: 4px 10px; }
+
+  /* Detail photos: full-size glamour shots, not letterbox slivers */
+  .dex-photo-frame { max-height: 420px; }
+  .photo-credit { font-size: 11px; }
+  .dex-fact { font-size: 13.5px; }
+  .dex-fact-label { font-size: 11px; }
+}
+
+/* ============================================================
+   WORLD RADIO THEATRICS — dart, pin drop, flying pig
+   ============================================================ */
+/* The thrown dart: streaks from bottom-right toward the map */
+#dart-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 560;
+  display: none;
+}
+#dart-overlay.fly { display: block; }
+.dart-thing { position: absolute; bottom: 18%; right: -100px; }
+#dart-overlay.fly .dart-thing {
+  animation: dart-fly 0.75s cubic-bezier(0.2, 0.7, 0.4, 1) forwards;
+}
+@keyframes dart-fly {
+  0%   { transform: translate(0, 0) rotate(160deg) scale(1.5); opacity: 1; }
+  70%  { transform: translate(-44vw, -26vh) rotate(172deg) scale(0.9); opacity: 1; }
+  100% { transform: translate(-48vw, -30vh) rotate(175deg) scale(0.55); opacity: 0; }
+}
+
+/* The dropped pin: falls in and settles with a bounce */
+.leaflet-div-icon.pin-marker, .pin-marker { background: transparent; border: none; }
+.pin-marker svg {
+  animation: pin-drop 0.65s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.5));
+}
+@keyframes pin-drop {
+  0%   { transform: translateY(-110px); opacity: 0; }
+  55%  { transform: translateY(5px); opacity: 1; }
+  75%  { transform: translateY(-8px); }
+  100% { transform: translateY(0); }
+}
+
+/* When pigs fly: soars across in a gentle arc, wing flapping */
+#pig-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 560;
+  display: none;
+}
+#pig-overlay.fly { display: block; }
+.pig-thing { position: absolute; top: 34%; left: -160px; }
+#pig-overlay.fly .pig-thing { animation: pig-fly 2.5s ease-in-out forwards; }
+.pig-wing { transform-origin: 36px 24px; }
+#pig-overlay.fly .pig-wing { animation: pig-flap 0.32s ease-in-out infinite alternate; }
+@keyframes pig-fly {
+  0%   { transform: translate(0, 0) rotate(4deg); }
+  30%  { transform: translate(34vw, -9vh) rotate(-4deg); }
+  60%  { transform: translate(66vw, -3vh) rotate(4deg); }
+  100% { transform: translate(115vw, -12vh) rotate(-3deg); }
+}
+@keyframes pig-flap {
+  from { transform: rotate(-14deg) scaleY(1); }
+  to   { transform: rotate(16deg) scaleY(0.75); }
+}
+@media (min-width: 1500px) {
+  .dart-thing svg { width: 130px; }
+  .pig-thing svg { width: 185px; }
+}

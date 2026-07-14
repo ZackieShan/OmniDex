@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>SkyDex - Aircraft Tracking Kiosk</title>
+  <!-- Pokédex Theme CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', path='css/pokedex.css') }}?v={{ v }}">
+  <!-- Leaflet (street map for the Live view; falls back to radar if offline) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    window.SKYDEX_HOME = { lat: {{ home_lat }}, lon: {{ home_lon }}, radius: {{ radius }}, name: "{{ home_name }}" };
+  </script>
+</head>
+<body>
+
+  <!-- ============================= -->
+  <!-- MAIN POKEDEX DEVICE CONTAINER -->
+  <!-- ============================= -->
+  <div id="pokedex-device">
+
+    <!-- Pokédex Hinge (top center circle) -->
+    <div id="pokedex-hinge"></div>
+
+    <!-- Top Status Bar -->
+    <div id="status-bar">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="status-led" id="status-led" title="Tracker Active"></div>
+        <div class="mode-switch" role="tablist">
+          <button id="mode-sky" class="mode-seg active" onclick="setMode('air')">SkyDex</button>
+          <button id="mode-sea" class="mode-seg" onclick="setMode('sea')">SeaDex</button>
+          <button id="mode-atmo" class="mode-seg" onclick="setMode('atmo')">AtmoDex</button>
+          <button id="mode-land" class="mode-seg" onclick="setMode('land')">LandDex</button>
+          <button id="mode-ether" class="mode-seg" onclick="setMode('ether')">EtherDex</button>
+        </div>
+        <span id="audio-indicator" title="Sound effects on/off" onclick="toggleAudio()"></span>
+      </div>
+      <div id="world-clocks"><!-- built by updateClock() --></div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div id="vol-wrap" class="hidden" title="Volume">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>
+          <input type="range" id="vol-slider" min="0" max="100" value="85" oninput="setVolume(this.value/100)">
+        </div>
+        <button id="global-stop" class="hidden" onclick="stopAllAudio()" title="Stop all audio">
+          <span class="gs-dot"></span><span id="gs-label">AUDIO</span>&nbsp;&#9632;
+        </button>
+        <button id="voice-mute" onclick="toggleVoiceMute()" title="Mute the announcer voice"></button>
+        <div id="clock-display">--:--:--</div>
+        <button id="gear-btn" onclick="toggleDrawer()" title="Quick settings"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19.14 12.94a7.07 7.07 0 0 0 0-1.88l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96a7.2 7.2 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.89 2h-3.84a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.4-.96a.5.5 0 0 0-.6.22L2.65 8.48a.5.5 0 0 0 .12.64l2.03 1.58a7.07 7.07 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.23.4.32.6.22l2.4-.96c.49.38 1.03.7 1.62.94l.36 2.54c.04.24.25.42.49.42h3.84c.24 0 .45-.18.49-.42l.36-2.54a7.2 7.2 0 0 0 1.63-.94l2.39.96c.21.1.48.01.61-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg></button>
+      </div>
+    </div>
+
+    <!-- Main Screen Area -->
+    <div id="pokedex-screen">
+      <!-- Scanline overlays for retro CRT feel -->
+      <div id="scanlines"></div>
+      <div id="scanline-beam"></div>
+
+      <!-- Catch flash overlay for new aircraft -->
+      <div id="catch-flash-overlay"></div>
+
+      <!-- Toast notifications container -->
+      <div id="toast-container"></div>
+
+      <!-- Weather strip (hidden until data loaded) -->
+      <div id="weather-strip" class="hidden"></div>
+
+      <!-- Active weather / marine advisories (hidden until there are any) -->
+      <div id="alert-banner" class="hidden"></div>
+
+      <!-- Generic info modal: tap a badge / achievement / type pill / rarity -->
+      <div id="info-modal" class="hidden" onclick="closeInfoModal()">
+        <div id="info-modal-card" onclick="event.stopPropagation()">
+          <div id="info-modal-title"></div>
+          <div id="info-modal-body"></div>
+          <button class="day-summary-btn" onclick="closeInfoModal()" style="margin-top:10px;">Close</button>
+        </div>
+      </div>
+
+      <!-- Quick-settings drawer (gear button in the status bar) -->
+      <div id="settings-drawer" class="hidden">
+        <div class="drawer-title">Quick Settings
+          <button class="drawer-close" onclick="toggleDrawer()">&#10005;</button>
+        </div>
+        <div id="drawer-body"><!-- toggles rendered by controls.js --></div>
+        <div class="drawer-foot">Full controls: <b>http://&lt;pi-ip&gt;:8000/admin</b> from any device</div>
+      </div>
+
+      <!-- Attract mode: idle showcase (touch anywhere to dismiss) -->
+      <div id="attract-overlay" class="hidden">
+        <div id="attract-card"><!-- rendered by showcase.js --></div>
+        <div id="attract-hint">touch to wake</div>
+      </div>
+
+      <!-- Day replay scrubber (shown over the map during playback) -->
+      <div id="replay-bar" class="hidden">
+        <button class="rt-btn" onclick="stopReplay()">&#10005;</button>
+        <div id="replay-track"><div id="replay-progress"></div></div>
+        <div id="replay-clock">--:--</div>
+      </div>
+
+      <!-- LiveATC audio (created muted; user tap starts it) -->
+      <audio id="atc-audio" preload="none"></audio>
+
+      <!-- World Radio: the thrown dart -->
+      <div id="dart-overlay"><div class="dart-thing">
+        <svg viewBox="0 0 64 20" width="90" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="64,10 50,6 50,14" fill="#c0c8d4"/>
+          <rect x="22" y="8.4" width="29" height="3.2" rx="1.6" fill="#e63946"/>
+          <polygon points="22,10 6,2 12,10 6,18" fill="#FFCB05"/>
+        </svg>
+      </div></div>
+
+      <!-- HAM it Up: when pigs fly (worldwide spin) -->
+      <div id="pig-overlay"><div class="pig-thing">
+        <svg viewBox="0 0 80 56" width="130" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="40" cy="34" rx="24" ry="16" fill="#f4a6b8"/>
+          <circle cx="62" cy="30" r="10" fill="#f4a6b8"/>
+          <ellipse cx="68" cy="32" rx="4.5" ry="3.6" fill="#e87f98"/>
+          <circle cx="66.5" cy="31.5" r="1" fill="#7a3b4d"/><circle cx="69.5" cy="31.5" r="1" fill="#7a3b4d"/>
+          <circle cx="60" cy="26" r="1.6" fill="#3b2026"/>
+          <polygon points="56,20 60,14 63,21" fill="#e87f98"/>
+          <path d="M16 34c-3-2-6-1-7 2 2 2 5 2 7 0z" fill="#f4a6b8"/>
+          <ellipse class="pig-wing" cx="36" cy="20" rx="12" ry="7" fill="#ffffff" opacity="0.9"/>
+          <ellipse cx="30" cy="48" rx="3" ry="4" fill="#e87f98"/><ellipse cx="48" cy="48" rx="3" ry="4" fill="#e87f98"/>
+        </svg>
+      </div></div>
+
+      <!-- Mode easter eggs: biplane (Sky), kraken (Sea), steam loco (Land) -->
+      <div id="biplane-overlay"><div class="biplane-craft">
+        <svg viewBox="0 0 64 32" width="110" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="6" width="34" height="3" rx="1.5" fill="#d4a373"/><rect x="14" y="16" width="26" height="3" rx="1.5" fill="#d4a373"/><path d="M24 9v7M34 9v7" stroke="#9aa7b7" stroke-width="1.5"/><ellipse cx="34" cy="18" rx="16" ry="4" fill="#e63946"/><path d="M14 18l-8-5v10z" fill="#e63946"/><circle cx="50" cy="18" r="2" fill="#333"/><path d="M52 12v12" stroke="#f4d35e" stroke-width="2.5"/></svg>
+      </div></div>
+      <div id="kraken-overlay"><div class="kraken-beast">
+        <svg viewBox="0 0 40 32" width="130" xmlns="http://www.w3.org/2000/svg"><path d="M20 4c7 0 11 5 11 11 0 2-1 4-2 5 2 1 4 0 5-2 0 5-4 7-7 6-1 2-4 4-7 4s-6-2-7-4c-3 1-7-1-7-6 1 2 3 3 5 2-1-1-2-3-2-5C9 9 13 4 20 4z" fill="#7859c4"/><circle cx="15" cy="13" r="2.4" fill="#fff"/><circle cx="25" cy="13" r="2.4" fill="#fff"/><circle cx="15.7" cy="13.6" r="1.1" fill="#111"/><circle cx="25.7" cy="13.6" r="1.1" fill="#111"/></svg>
+      </div></div>
+      <div id="loco-overlay"><div class="loco-train">
+        <svg viewBox="0 0 48 28" width="120" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="10" width="24" height="10" rx="2" fill="#3d3d3d"/><rect x="28" y="4" width="12" height="16" rx="2" fill="#2b2b2b"/><rect x="8" y="4" width="5" height="7" fill="#3d3d3d"/><circle cx="11" cy="22" r="3.4" fill="#c9a227"/><circle cx="21" cy="22" r="3.4" fill="#c9a227"/><circle cx="33" cy="22" r="4.2" fill="#c9a227"/><circle cx="9" cy="3" r="2.4" fill="#dfe7ef" opacity=".8"/><circle cx="13" cy="1.2" r="1.8" fill="#dfe7ef" opacity=".5"/><circle cx="17" cy="0" r="1.4" fill="#dfe7ef" opacity=".3"/></svg>
+      </div></div>
+
+      <!-- UFO easter egg: overlay it streaks across, and a floating button (AtmoDex only) -->
+      <div id="ufo-overlay"><div class="ufo-craft">
+        <svg viewBox="0 0 80 40" xmlns="http://www.w3.org/2000/svg" width="90">
+          <ellipse cx="40" cy="26" rx="34" ry="9" fill="#9aa7c7"/>
+          <ellipse cx="40" cy="20" rx="17" ry="11" fill="#cfe3ff"/>
+          <circle cx="18" cy="29" r="2.4" fill="#ffd24a"/><circle cx="40" cy="31" r="2.4" fill="#7CFC00"/><circle cx="62" cy="29" r="2.4" fill="#ff6b9d"/>
+        </svg>
+      </div></div>
+
+      <!-- ===== VIEW: Live Contacts ===== -->
+      <div id="view-contacts" class="view active">
+        <div class="action-row">
+          <button class="day-summary-btn" onclick="openDaySummary()">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" style="vertical-align:-2px;margin-right:6px;"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm2 6v8h2V9H7zm4-4v12h2V5h-2zm4 7v5h2v-5h-2z"/></svg>
+            Summary
+          </button>
+          <button class="day-summary-btn" onclick="openRecords()">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" style="vertical-align:-2px;margin-right:6px;"><path d="M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 14.3 7.2 16.9l.9-5.4L4.2 7.7l5.4-.8L12 2z"/></svg>
+            Records
+          </button>
+          <button class="day-summary-btn" onclick="openJourneys()">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" style="vertical-align:-2px;margin-right:6px;"><path d="M12 2a7 7 0 0 1 7 7c0 5.25-7 13-7 13S5 14.25 5 9a7 7 0 0 1 7-7zm0 9.5A2.5 2.5 0 1 0 12 6.5a2.5 2.5 0 0 0 0 5z"/></svg>
+            Journeys
+          </button>
+          <button class="day-summary-btn" id="quiz-btn" onclick="openGames()">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" style="vertical-align:-2px;margin-right:6px;"><path d="M16 6H8a6 6 0 0 0-5.7 7.9l1 3.1A2.8 2.8 0 0 0 8 18l1.5-2h5L16 18a2.8 2.8 0 0 0 4.7-1l1-3.1A6 6 0 0 0 16 6zM9 12H7.5v1.5h-1V12H5v-1h1.5V9.5h1V11H9v1zm7.8 1.3a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2zm2.2-3a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2z"/></svg>
+            Games
+          </button>
+          <button class="day-summary-btn" id="replay-btn" onclick="startReplay()">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" style="vertical-align:-2px;margin-right:6px;"><path d="M12 5V1L7 6l5 5V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z"/></svg>
+            Replay
+          </button>
+          <button class="day-summary-btn" id="biplane-btn" onclick="biplaneZoom()" title="Contact!">
+            <svg viewBox="0 0 64 32" width="22" height="12" style="vertical-align:-1px;"><rect x="10" y="6" width="34" height="3" rx="1.5" fill="#d4a373"/><rect x="14" y="16" width="26" height="3" rx="1.5" fill="#d4a373"/><path d="M24 9v7M34 9v7" stroke="#9aa7b7" stroke-width="1.5"/><ellipse cx="34" cy="18" rx="16" ry="4" fill="#e63946"/><path d="M14 18l-8-5v10z" fill="#e63946"/><circle cx="50" cy="18" r="2" fill="#333"/><path d="M52 12v12" stroke="#f4d35e" stroke-width="2"/></svg>
+          </button>
+          <button class="day-summary-btn" id="kraken-btn" onclick="krakenRise()" title="Release it!">
+            <svg viewBox="0 0 40 32" width="18" height="14" style="vertical-align:-1px;"><path d="M20 4c7 0 11 5 11 11 0 2-1 4-2 5 2 1 4 0 5-2 0 5-4 7-7 6-1 2-4 4-7 4s-6-2-7-4c-3 1-7-1-7-6 1 2 3 3 5 2-1-1-2-3-2-5C9 9 13 4 20 4z" fill="#7859c4"/><circle cx="15" cy="13" r="2.4" fill="#fff"/><circle cx="25" cy="13" r="2.4" fill="#fff"/><circle cx="15.7" cy="13.6" r="1.1" fill="#111"/><circle cx="25.7" cy="13.6" r="1.1" fill="#111"/></svg>
+          </button>
+          <button class="day-summary-btn" id="kbdr-btn" onclick="openKbdr()">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" style="vertical-align:-2px;margin-right:6px;"><path d="M11 2h2v3.5c0 .4.2.7.5.9L19 9.6c.3.2.5.5.5.9V12l-6.5-1.5V16l2 1.5V19l-3-.8-3 .8v-1.5l2-1.5v-5.5L4.5 12v-1.5c0-.4.2-.7.5-.9l5.5-3.2c.3-.2.5-.5.5-.9V2z" opacity="0"/><path d="M4 21h16v-1.6H4V21zM6.2 7.2 12 3l5.8 4.2v2L12 5.4 6.2 9.2v-2zM11 10h2v8h-2v-8zM7 12h2v6H7v-6zM15 12h2v6h-2v-6z"/></svg>
+            KBDR
+          </button>
+        </div>
+        <div class="live-layout">
+          <div class="live-list">
+            <div id="contacts-list">
+              <!-- Contact rows rendered by JS -->
+            </div>
+            <div id="empty-state" class="hidden">
+              <div class="pokeball-spinner">
+                <div class="pokeball-button"></div>
+              </div>
+              <div class="empty-title">No wild aircraft in range!</div>
+              <div class="empty-message">Scanning the skies for contacts...</div>
+              <div class="fact-box">
+                <div class="fact-label">Pokédex Entry</div>
+                <div class="fact-text" id="rotating-fact">The Boeing 747 has been in service since 1970 and has flown over 3.5 billion passengers.</div>
+              </div>
+            </div>
+          </div>
+          <div class="live-radar">
+            <div class="radar-toggle">
+              <button id="rt-map" class="rt-btn active" onclick="showMapMode('map')">Map</button>
+              <button id="rt-radar" class="rt-btn" onclick="showMapMode('radar')">Radar</button>
+            </div>
+            <div id="radar" style="display:none;"><!-- radar SVG rendered by JS --></div>
+            <div id="map"><!-- Leaflet map (primary live view) --></div>
+            <div class="radar-caption">Range view · Stratford, CT</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== VIEW: Day Summary (Air + Sea, only from Live) ===== -->
+      <div id="view-daysummary" class="view">
+        <div class="screen-header">
+          <div>
+            <div class="screen-title">Today at SkyDex</div>
+            <div class="screen-subtitle" id="daysummary-date">Air &amp; Sea — daily report</div>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button class="day-summary-back" onclick="openAlmanac()">This Week &#187;</button>
+            <button class="day-summary-back" onclick="showView('contacts')">&#8249; Live</button>
+          </div>
+        </div>
+        <div id="daysummary-content">
+          <!-- rendered by JS -->
+        </div>
+      </div>
+
+      <!-- ===== VIEW: Hall of Fame (records + achievements) ===== -->
+      <div id="view-records" class="view">
+        <div class="screen-header">
+          <div>
+            <div class="screen-title">Hall of Fame</div>
+            <div class="screen-subtitle">All-time records &amp; achievements</div>
+          </div>
+          <button class="day-summary-back" onclick="showView('contacts')">&#8249; Live</button>
+        </div>
+        <div id="records-content"><div class="ds-empty">Loading records…</div></div>
+      </div>
+
+      <!-- ===== VIEW: Games arcade + trainer cards ===== -->
+      <div id="view-games" class="view">
+        <div class="screen-header">
+          <div>
+            <div class="screen-title">Games</div>
+            <div class="screen-subtitle">Trainer cards, trophies &amp; challenges</div>
+          </div>
+          <button class="day-summary-back" onclick="showView('contacts')">&#8249; Live</button>
+        </div>
+        <div id="games-content"><div class="ds-empty">Loading the arcade…</div></div>
+      </div>
+
+      <!-- ===== VIEW: Journeys (followed craft, worldwide) ===== -->
+      <div id="view-journeys" class="view">
+        <div class="screen-header">
+          <div>
+            <div class="screen-title">Journeys</div>
+            <div class="screen-subtitle">Followed planes &amp; ships, tracked worldwide</div>
+          </div>
+          <button class="day-summary-back" onclick="showView('contacts')">&#8249; Live</button>
+        </div>
+        <div id="journeys-content"><div class="ds-empty">Loading journeys…</div></div>
+      </div>
+
+      <!-- ===== VIEW: Weekly Almanac ===== -->
+      <div id="view-almanac" class="view">
+        <div class="screen-header">
+          <div>
+            <div class="screen-title">This Week at SkyDex</div>
+            <div class="screen-subtitle" id="almanac-range">7-day almanac</div>
+          </div>
+          <button class="day-summary-back" onclick="showView('daysummary')">&#8249; Today</button>
+        </div>
+        <div id="almanac-content"><div class="ds-empty">Loading almanac…</div></div>
+      </div>
+
+      <!-- ===== VIEW: Professor's Quiz ===== -->
+      <div id="view-quiz" class="view">
+        <div class="screen-header">
+          <div>
+            <div class="screen-title">Professor's Quiz</div>
+            <div class="screen-subtitle" id="quiz-progress">5 questions — air, sea &amp; sky</div>
+          </div>
+          <button class="day-summary-back" onclick="showView('contacts')">&#8249; Live</button>
+        </div>
+        <div id="quiz-content"></div>
+      </div>
+
+      <!-- ===== VIEW: KBDR Ops Board (schedule + observed + tower audio) ===== -->
+      <div id="view-kbdr" class="view">
+        <div class="screen-header">
+          <div>
+            <div class="screen-title">KBDR — Sikorsky Memorial</div>
+            <div class="screen-subtitle" id="kbdr-sub">Arrivals &amp; departures · Bridgeport, CT</div>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button class="day-summary-btn" id="atc-btn" onclick="toggleAtc()" style="margin:0;">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" style="vertical-align:-2px;margin-right:6px;"><path d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zm6 8a6 6 0 0 1-5 5.91V19h2.5v2h-7v-2H11v-2.09A6 6 0 0 1 6 11h2a4 4 0 0 0 8 0h2z"/></svg>
+              <span id="atc-label">Tower</span>
+            </button>
+            <button class="day-summary-back" onclick="showView('contacts')">&#8249; Live</button>
+          </div>
+        </div>
+        <div id="kbdr-content"><div class="ds-empty">Loading the board…</div></div>
+      </div>
+
+      <!-- ===== VIEW: LandDex — Stratford station board + passing Amtrak ===== -->
+      <div id="view-land" class="view">
+        <div class="screen-header">
+          <div>
+            <div class="screen-title">Stratford Station</div>
+            <div class="screen-subtitle" id="land-sub">Metro-North · New Haven Line</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <button class="day-summary-btn" onclick="locoChug()" title="All aboard!" style="margin:0;width:auto;display:inline-flex;padding:5px 11px;font-size:11px;border-radius:14px;">
+              <svg viewBox="0 0 48 28" width="22" height="13" style="vertical-align:-1px;"><rect x="4" y="10" width="24" height="10" rx="2" fill="#3d3d3d"/><rect x="28" y="4" width="12" height="16" rx="2" fill="#2b2b2b"/><rect x="8" y="4" width="5" height="7" fill="#3d3d3d"/><circle cx="11" cy="22" r="3.4" fill="#c9a227"/><circle cx="21" cy="22" r="3.4" fill="#c9a227"/><circle cx="33" cy="22" r="4.2" fill="#c9a227"/><circle cx="9" cy="3" r="2.4" fill="#9aa7b7" opacity=".7"/><circle cx="13" cy="1.6" r="1.7" fill="#9aa7b7" opacity=".45"/></svg>
+            </button>
+            <div id="land-count" style="text-align:right;font-size:11px;color:var(--text-dim);"></div>
+          </div>
+        </div>
+        <div id="land-content"><div class="ds-empty">Loading the rails…</div></div>
+      </div>
+
+      <!-- ===== VIEW: LandDex — Traindex collection ===== -->
+      <div id="view-land-dex" class="view">
+        <div class="screen-header">
+          <div>
+            <div class="screen-title">Traindex</div>
+            <div class="screen-subtitle">Amtrak trains caught passing Stratford</div>
+          </div>
+          <div id="landdex-count" style="font-size:22px;font-weight:bold;color:var(--accent-yellow);">0</div>
+        </div>
+        <div id="landdex-content"><div class="ds-empty">No trains logged yet — the watcher is listening.</div></div>
+      </div>
+
+      <!-- ===== VIEW: LandDex — Road (I-95 commutes + scanner) ===== -->
+      <div id="view-land-road" class="view">
+        <div class="screen-header">
+          <div>
+            <div class="screen-title">The Road</div>
+            <div class="screen-subtitle" id="road-sub">I-95 commutes from home</div>
+          </div>
+          <button class="day-summary-btn" id="scanner-btn" onclick="toggleScanner()" style="margin:0;display:none;">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" style="vertical-align:-2px;margin-right:6px;"><path d="M4 6h16v12H4z" opacity=".3"/><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 14H4V6h16v12zM6 8h8v2H6zm10 0h2v2h-2zM6 12h2v4H6zm4 0h2v4h-2zm4 0h2v4h-2z"/></svg>
+            <span id="scanner-label">Scanner</span>
+          </button>
+        </div>
+        <div id="road-content"><div class="ds-empty">Checking the roads…</div></div>
+      </div>
+
+      <!-- ===== VIEW: LandDex — Grand Central ===== -->
+      <div id="view-land-history" class="view">
+        <div class="screen-header">
+          <div>
+            <div class="screen-title">Grand Central</div>
+            <div class="screen-subtitle">Every line out of the Terminal — 60 miles down the track</div>
+          </div>
+          <span style="font-size:10px;color:var(--text-dim);white-space:nowrap;">
+            <span class="line-dot" style="background:#009B3A;"></span>Hudson
+            <span class="line-dot" style="background:#0039A6;margin-left:6px;"></span>Harlem
+            <span class="line-dot" style="background:#EE0034;margin-left:6px;"></span>New Haven
+          </span>
+        </div>
+        <div id="history-content"><div class="ds-empty">Opening the Terminal…</div></div>
+      </div>
+
+      <!-- ===== VIEW: EtherDex — the airwaves right now ===== -->
+      <div id="view-ether" class="view">
+        <div class="screen-header">
+          <div>
+            <div class="screen-title">The Airwaves</div>
+            <div class="screen-subtitle" id="ether-sub">Radio devices heard in the last 20 minutes</div>
+          </div>
+          <div id="ether-count" style="text-align:right;font-size:11px;color:var(--text-dim);"></div>
+        </div>
+        <div id="ether-content"><div class="ds-empty">Tuning the receiver…</div></div>
+      </div>
+
+      <!-- ===== VIEW: iSpy — Where in the World? (random webcam guessing game) ===== -->
+      <div id="view-ether-dex" class="view">
+        <div class="screen-header">
+          <div>
+            <div class="screen-title">iSpy — Where in the World?</div>
+            <div class="screen-subtitle">A real camera, somewhere on Earth · 3 guesses · first try scores</div>
+          </div>
+          <div id="etherdex-count" style="font-size:22px;font-weight:bold;color:var(--accent-yellow);"></div>
+        </div>
+        <div id="etherdex-content"><div class="ds-empty">Spin the globe…</div></div>
+      </div>
+
+      <!-- ===== VIEW: EtherDex — World Radio (dart at the globe) ===== -->
+      <div id="view-ether-tuner" class="view">
+        <div class="screen-header">
+          <div>
+            <div class="screen-title">World Radio</div>
+            <div class="screen-subtitle" id="radio-sub">Throw a dart — hear the planet</div>
+          </div>
+          <button class="day-summary-btn" onclick="radioDart()" style="margin:0;width:auto;display:inline-flex;padding:7px 14px;font-size:13px;">
+            &#127919; Throw a Dart
+          </button>
+        </div>
+        <div id="tuner-content"><div class="ds-empty">Spinning the globe…</div></div>
+      </div>
+
+      <!-- ===== VIEW: EtherDex — HAM it Up ===== -->
+      <div id="view-ether-bands" class="view">
+        <div class="screen-header">
+          <div>
+            <div class="screen-title">HAM it Up</div>
+            <div class="screen-subtitle">Look up any amateur radio callsign — who they are, where they are</div>
+          </div>
+        </div>
+        <div id="bands-content"></div>
+      </div>
+
+      <!-- Tuner preset audio -->
+      <audio id="tuner-audio" preload="none"></audio>
+
+      <!-- Scanner audio (Road view) -->
+      <audio id="scanner-audio" preload="none"></audio>
+
+      <!-- ===== VIEW: Planedex (Collection) ===== -->
+      <div id="view-dex" class="view">
+        <div class="screen-header">
+          <div>
+            <div class="screen-title" id="dex-title">Planedex</div>
+            <div class="screen-subtitle" id="dex-subtitle">Your aircraft collection</div>
+          </div>
+          <div style="text-align:right;">
+            <div id="dex-count" style="font-size:22px;font-weight:bold;color:var(--accent-yellow);">0</div>
+            <div style="font-size:10px;color:var(--text-dim);">collected</div>
+          </div>
+        </div>
+        <div class="dex-filters">
+          <select id="dex-filter-type" onchange="applyDexFilter()">
+            <option value="all">All Types</option>
+            <option value="jet">Jet</option>
+            <option value="rotor">Rotor</option>
+            <option value="sentinel">Sentinel</option>
+            <option value="heavy">Heavy</option>
+            <option value="bizjet">Bizjet</option>
+            <option value="voyager">Voyager</option>
+            <option value="trainer">Trainer</option>
+            <option value="hopper">Hopper</option>
+            <option value="hauler">Hauler</option>
+            <option value="medevac">Medevac</option>
+            <option value="commuter">Commuter</option>
+          </select>
+          <select id="dex-filter-rarity" onchange="applyDexFilter()">
+            <option value="all">All Rarities</option>
+            <option value="common">Common</option>
+            <option value="uncommon">Uncommon</option>
+            <option value="rare">Rare</option>
+            <option value="epic">Epic</option>
+            <option value="legendary">Legendary</option>
+          </select>
+          <select id="dex-filter-badge" onchange="applyDexFilter()">
+            <option value="all">All Badges</option>
+          </select>
+          <select id="dex-sort" onchange="applyDexFilter()">
+            <option value="count">Sort: Most Seen</option>
+            <option value="dex">Sort: Dex #</option>
+            <option value="rarity">Sort: Rarity</option>
+            <option value="name">Sort: Name</option>
+          </select>
+          <select id="dex-filter-window" onchange="applyDexFilter()">
+            <option value="week" selected>This Week</option>
+            <option value="month">This Month</option>
+            <option value="all">All Time</option>
+          </select>
+          <select id="dex-view-mode" onchange="applyDexFilter()">
+            <option value="cards">Cards</option>
+            <option value="list">List (fast)</option>
+          </select>
+        </div>
+        <div id="dex-list" class="dex-grid">
+          <!-- Dex cards rendered by JS -->
+        </div>
+        <div id="dex-empty" class="hidden" style="text-align:center;padding:40px 20px;">
+          <div class="pokeball-spinner">
+            <div class="pokeball-button"></div>
+          </div>
+          <div class="empty-title" style="margin-top:16px;">No entries yet!</div>
+          <div class="empty-message">Track aircraft to fill your Planedex collection.</div>
+        </div>
+      </div>
+
+      <!-- ===== VIEW: Statistics ===== -->
+      <div id="view-stats" class="view">
+        <div class="screen-header">
+          <div>
+            <div class="screen-title" id="stats-title">Trainer Card</div>
+            <div class="screen-subtitle">Your tracking statistics</div>
+          </div>
+        </div>
+        <div id="stats-content">
+          <!-- Stats summary cards -->
+          <div class="stats-summary" id="stats-summary">
+            <div class="stat-card">
+              <div class="stat-card-value" id="stat-total">0</div>
+              <div class="stat-card-label">Total Seen</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-value" id="stat-unique">0</div>
+              <div class="stat-card-label">Unique</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-value" id="stat-streak">0</div>
+              <div class="stat-card-label">Day Streak</div>
+            </div>
+          </div>
+
+          <!-- Two-column layout to use the full width of the screen -->
+          <div class="stats-columns">
+            <div class="stats-col">
+              <div class="dex-section-title" id="st-type-title">Fleet by Type</div>
+              <div class="type-distribution" id="type-breakdown"></div>
+
+              <div class="dex-section-title" id="st-rarity-title">Rarity Breakdown</div>
+              <div class="type-distribution" id="type-distribution">
+                <!-- Rarity bars rendered by JS -->
+              </div>
+            </div>
+
+            <div class="stats-col">
+              <div class="dex-section-title" id="st-regulars-title">Top Regulars</div>
+              <div class="battle-log" id="recent-log" style="max-height:none;">
+                <div class="log-entry">No sightings yet. Start tracking!</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Routes (air) / Destinations & Flags (sea): full width, two columns -->
+          <div class="dex-section-title" id="st-routes-title">Routes</div>
+          <div class="stats-columns">
+            <div class="stats-col"><div id="routes-top" style="font-size:12px;color:var(--text);line-height:1.9;"></div></div>
+            <div class="stats-col"><div id="routes-rare" style="font-size:12px;color:var(--text);line-height:1.9;"></div></div>
+          </div>
+
+          <!-- SeaDex-only extra stats (nav status, size, closest, dwell) -->
+          <div id="sea-extra-stats">
+            <div class="stats-columns">
+              <div class="stats-col">
+                <div class="dex-section-title">Nav Status</div>
+                <div class="type-distribution" id="nav-status-breakdown"></div>
+              </div>
+              <div class="stats-col">
+                <div class="dex-section-title">Biggest Vessels</div>
+                <div id="biggest-vessels" style="font-size:12px;color:var(--text);line-height:1.9;"></div>
+              </div>
+            </div>
+            <div class="stats-columns">
+              <div class="stats-col">
+                <div class="dex-section-title">Closest Approach</div>
+                <div id="closest-approach" style="font-size:12px;color:var(--text);"></div>
+              </div>
+              <div class="stats-col">
+                <div class="dex-section-title">Longest Visit</div>
+                <div id="longest-dwell" style="font-size:12px;color:var(--text);"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== VIEW: Graphs ===== -->
+      <div id="view-graphs" class="view">
+        <div class="screen-header">
+          <div>
+            <div class="screen-title" id="graphs-title">Graphs</div>
+            <div class="screen-subtitle">Activity trends</div>
+          </div>
+        </div>
+        <div class="dex-section-title" id="g-typeday-title">Activity by Fleet Type — by Day</div>
+        <div id="chart-type-day" class="chart-box"></div>
+
+        <div class="dex-section-title" id="g-hour-title">Activity by Hour — Today</div>
+        <div id="chart-hour-today" class="chart-box"></div>
+
+        <div class="stats-columns">
+          <div class="stats-col">
+            <div class="dex-section-title" id="g-models-title">Top Models</div>
+            <div id="chart-models" class="chart-box"></div>
+          </div>
+          <div class="stats-col">
+            <div class="dex-section-title" id="g-operators-title">Top Operators</div>
+            <div id="chart-operators" class="chart-box"></div>
+          </div>
+        </div>
+
+        <div class="stats-columns">
+          <div class="stats-col">
+            <div class="dex-section-title" id="g-dep-title">Top Departure Cities</div>
+            <div id="chart-dep-cities" class="chart-box"></div>
+          </div>
+          <div class="stats-col">
+            <div class="dex-section-title" id="g-arr-title">Top Arrival Cities</div>
+            <div id="chart-arr-cities" class="chart-box"></div>
+          </div>
+        </div>
+
+        <div class="stats-columns">
+          <div class="stats-col">
+            <div class="dex-section-title" id="g-deprare-title">Rarest Departure Cities</div>
+            <div id="chart-dep-cities-rare" class="chart-box"></div>
+          </div>
+          <div class="stats-col">
+            <div class="dex-section-title" id="g-arrrare-title">Rarest Arrival Cities</div>
+            <div id="chart-arr-cities-rare" class="chart-box"></div>
+          </div>
+        </div>
+
+        <div class="dex-section-title" id="g-emerg-title">Emergency Squawks</div>
+        <div id="chart-emergencies" class="chart-box"></div>
+      </div>
+
+      <!-- ===== VIEW: Detail Page ===== -->
+      <div id="view-detail" class="view">
+        <div id="detail-content">
+          <!-- Detail content rendered by JS -->
+        </div>
+      </div>
+
+      <!-- ===== VIEW: AtmoDex (Tonight's Sky) ===== -->
+      <div id="view-atmo" class="view">
+        <div class="screen-header">
+          <div>
+            <div class="screen-title">Tonight's Sky</div>
+            <div class="screen-subtitle">AtmoDex · Stratford, CT</div>
+          </div>
+          <button class="atmo-hdr-btn" onclick="ufoZoom()" title="To the launches!"><svg viewBox="0 0 64 32" width="20" height="13" style="vertical-align:-2px;"><ellipse cx="32" cy="21" rx="28" ry="7" fill="#9aa7c7"/><ellipse cx="32" cy="16" rx="13" ry="9" fill="#cfe3ff"/><circle cx="16" cy="24" r="2" fill="#ffd24a"/><circle cx="48" cy="24" r="2" fill="#7CFC00"/></svg> UFO</button>
+        </div>
+        <div id="atmo-content">
+          <!-- AtmoDex content rendered by JS -->
+        </div>
+      </div>
+
+      <!-- ===== VIEW: AtmoDex · StormDex (weather catches) ===== -->
+      <div id="view-atmo-storms" class="view">
+        <div class="screen-header">
+          <div>
+            <div class="screen-title">StormDex</div>
+            <div class="screen-subtitle">Record breakers, named storms &amp; wild weather — logged forever</div>
+          </div>
+          <button class="atmo-hdr-btn" onclick="ufoZoom()" title="To the launches!"><svg viewBox="0 0 64 32" width="20" height="13" style="vertical-align:-2px;"><ellipse cx="32" cy="21" rx="28" ry="7" fill="#9aa7c7"/><ellipse cx="32" cy="16" rx="13" ry="9" fill="#cfe3ff"/><circle cx="16" cy="24" r="2" fill="#ffd24a"/><circle cx="48" cy="24" r="2" fill="#7CFC00"/></svg> UFO</button>
+        </div>
+        <div id="storms-content"><div class="ds-empty">Watching the sky…</div></div>
+      </div>
+
+      <!-- ===== VIEW: AtmoDex · Forecast ===== -->
+      <div id="view-atmo-forecast" class="view">
+        <div class="screen-header">
+          <div>
+            <div class="screen-title">Forecast</div>
+            <div class="screen-subtitle">Stratford, CT</div>
+          </div>
+          <button class="atmo-hdr-btn" onclick="ufoZoom()" title="To the launches!"><svg viewBox="0 0 64 32" width="20" height="13" style="vertical-align:-2px;"><ellipse cx="32" cy="21" rx="28" ry="7" fill="#9aa7c7"/><ellipse cx="32" cy="16" rx="13" ry="9" fill="#cfe3ff"/><circle cx="16" cy="24" r="2" fill="#ffd24a"/><circle cx="48" cy="24" r="2" fill="#7CFC00"/></svg> UFO</button>
+        </div>
+        <div id="atmo-forecast-content"></div>
+      </div>
+
+      <!-- ===== VIEW: AtmoDex · Sky Guide ===== -->
+      <div id="view-atmo-guide" class="view">
+        <div class="screen-header">
+          <div>
+            <div class="screen-title">Sky Guide</div>
+            <div class="screen-subtitle">Meteor showers · what to look for</div>
+          </div>
+          <button class="atmo-hdr-btn" onclick="ufoZoom()" title="To the launches!"><svg viewBox="0 0 64 32" width="20" height="13" style="vertical-align:-2px;"><ellipse cx="32" cy="21" rx="28" ry="7" fill="#9aa7c7"/><ellipse cx="32" cy="16" rx="13" ry="9" fill="#cfe3ff"/><circle cx="16" cy="24" r="2" fill="#ffd24a"/><circle cx="48" cy="24" r="2" fill="#7CFC00"/></svg> UFO</button>
+        </div>
+        <div id="atmo-guide-content"></div>
+      </div>
+
+    </div> <!-- /pokedex-screen -->
+
+    <!-- Facts ticker — its own row between the screen and the controls (never overlaps content) -->
+    <div id="fact-ticker"><div id="fact-ticker-track">Scanning the skies over Stratford…</div></div>
+
+    <!-- Bottom Pokédex Controls -->
+    <div id="pokedex-controls">
+      <!-- Left scroll pad (press & hold to scroll the page) -->
+      <div class="scroll-pad">
+        <button class="scroll-btn" aria-label="Scroll up"
+          onpointerdown="startScroll(-1)" onpointerup="stopScroll()" onpointerleave="stopScroll()" onpointercancel="stopScroll()">&#9650;</button>
+        <button class="scroll-btn" aria-label="Scroll down"
+          onpointerdown="startScroll(1)" onpointerup="stopScroll()" onpointerleave="stopScroll()" onpointercancel="stopScroll()">&#9660;</button>
+      </div>
+
+      <div class="nav-group">
+        <!-- Graphs button -->
+        <button class="pokedex-btn" id="btn-graphs" onclick="navTo('graphs')" aria-label="Graphs">
+          <div class="btn-red"></div>
+          <span class="pokedex-btn-label">Graphs</span>
+        </button>
+
+        <!-- Main blue button (Live) -->
+        <button class="pokedex-btn active" id="btn-contacts" onclick="navTo('contacts')" aria-label="Live Contacts">
+          <div class="btn-main">&#9673;</div>
+          <span class="pokedex-btn-label">Live</span>
+        </button>
+
+        <!-- Green button (Planedex) -->
+        <button class="pokedex-btn" id="btn-dex" onclick="navTo('dex')" aria-label="Planedex">
+          <div class="btn-green"></div>
+          <span class="pokedex-btn-label">Dex</span>
+        </button>
+
+        <!-- Main blue button (Stats) -->
+        <button class="pokedex-btn" id="btn-stats" onclick="navTo('stats')" aria-label="Statistics">
+          <div class="btn-main">&#9733;</div>
+          <span class="pokedex-btn-label">Stats</span>
+        </button>
+      </div>
+
+      <!-- Right scroll pad -->
+      <div class="scroll-pad">
+        <button class="scroll-btn" aria-label="Scroll up"
+          onpointerdown="startScroll(-1)" onpointerup="stopScroll()" onpointerleave="stopScroll()" onpointercancel="stopScroll()">&#9650;</button>
+        <button class="scroll-btn" aria-label="Scroll down"
+          onpointerdown="startScroll(1)" onpointerup="stopScroll()" onpointerleave="stopScroll()" onpointercancel="stopScroll()">&#9660;</button>
+      </div>
+    </div>
+
+  </div> <!-- /pokedex-device -->
+
+  <!-- ============================= -->
+  <!-- JAVASCRIPT                    -->
+  <!-- ============================= -->
+  <script src="{{ url_for('static', path='js/pokedex.js') }}?v={{ v }}"></script>
+  <script src="{{ url_for('static', path='js/controls.js') }}?v={{ v }}"></script>
+  <script src="{{ url_for('static', path='js/records.js') }}?v={{ v }}"></script>
+  <script src="{{ url_for('static', path='js/journeys.js') }}?v={{ v }}"></script>
+  <script src="{{ url_for('static', path='js/games.js') }}?v={{ v }}"></script>
+  <script src="{{ url_for('static', path='js/showcase.js') }}?v={{ v }}"></script>
+  <script src="{{ url_for('static', path='js/landdex.js') }}?v={{ v }}"></script>
+  <script src="{{ url_for('static', path='js/etherdex.js') }}?v={{ v }}"></script>
+</body>
+</html>

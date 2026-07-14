@@ -1,0 +1,11 @@
+[Unit]
+Description=Run SkyDex backup nightly at 03:10
+
+[Timer]
+OnCalendar=*-*-* 03:10:00
+# If the Pi was off at 03:10, run the missed backup at next boot.
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

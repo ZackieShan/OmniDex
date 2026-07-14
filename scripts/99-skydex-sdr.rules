@@ -1,0 +1,17 @@
+# Pin the two RTL-SDR dongles to stable names so ADS-B and AIS never swap
+# after a reboot/replug. Find your serials with:  rtl_eeprom -d 0  and  -d 1
+# (or:  lsusb -v -d 0bda:2838 | grep iSerial)
+#
+# Install:
+#   1. Replace SERIAL_ADSB / SERIAL_AIS below with your real serials
+#   2. sudo cp scripts/99-skydex-sdr.rules /etc/udev/rules.d/
+#   3. sudo udevadm control --reload-rules && sudo udevadm trigger
+#
+# Then /dev/sdr-adsb and /dev/sdr-ais always point at the right dongle, and
+# dump1090/AIS-catcher keep selecting by serial (-d serial=...) reliably.
+
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0bda", ATTRS{idProduct}=="2838", ATTRS{serial}=="SERIAL_ADSB", SYMLINK+="sdr-adsb"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0bda", ATTRS{idProduct}=="2838", ATTRS{serial}=="SERIAL_AIS",  SYMLINK+="sdr-ais"
+
+# Keep the kernel DVB driver from grabbing the dongles (the "resource busy" fix):
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0bda", ATTRS{idProduct}=="2838", RUN+="/bin/sh -c 'echo 0bda 2838 > /sys/bus/usb/drivers/dvb_usb_rtl28xxu/unbind 2>/dev/null || true'"

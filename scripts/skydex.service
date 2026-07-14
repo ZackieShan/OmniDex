@@ -1,0 +1,20 @@
+# SkyDex main service — install with:
+#   sudo cp scripts/skydex.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now skydex
+[Unit]
+Description=SkyDex Aircraft Tracker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=skywatch
+WorkingDirectory=/home/skywatch/skydex
+Environment=PYTHONPATH=/home/skywatch/skydex
+ExecStart=/usr/bin/python3 /home/skywatch/skydex/main.py
+# on-failure covers crashes AND the admin page's Restart button (exit code 3).
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

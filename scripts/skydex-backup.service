@@ -1,0 +1,12 @@
+# Oneshot backup job (fired by skydex-backup.timer). Install with:
+#   sudo cp scripts/skydex-backup.{service,timer} /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now skydex-backup.timer
+[Unit]
+Description=SkyDex nightly backup to Google Drive (rclone)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=skywatch
+ExecStart=/bin/bash /home/skywatch/skydex/scripts/backup.sh

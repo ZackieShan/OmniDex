@@ -1,0 +1,7 @@
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+jinja2>=3.1.0
+aiohttp>=3.9.0
+python-multipart>=0.0.6
+websocket-client>=1.7.0   # optional: AISStream.io cloud AIS fallback (SeaDex). On Debian/Pi system Python: sudo apt install python3-websocket
+sgp4>=2.20                # optional: local satellite pass prediction (AtmoDex). On Debian/Pi: sudo apt install python3-sgp4

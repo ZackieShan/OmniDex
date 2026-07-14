@@ -1,0 +1,53 @@
+# ==========================================================================
+#  SECRETS — never commit. .env holds real API keys.
+# ==========================================================================
+.env
+.env.*
+!.env.example
+*_secret*
+*.key
+
+# Runtime settings overlay (may contain a location / personal tweaks)
+runtime_settings.json
+wizard_settings.json
+
+# ==========================================================================
+#  Local data — databases, caches, logs (also usually live in ~/.skydex)
+# ==========================================================================
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.log
+photos/
+climate_records.json
+waze_cache.json
+earcons/
+
+# ==========================================================================
+#  Gift-kit build output
+# ==========================================================================
+skydex-gift-kit/build/
+build/
+
+# ==========================================================================
+#  Python
+# ==========================================================================
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# ==========================================================================
+#  OS / editor cruft
+# ==========================================================================
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.vscode/
+.idea/

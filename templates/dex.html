@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>SkyDex — Dex Entry</title>
+  <link rel="stylesheet" href="/static/css/pokedex.css?v={{ v }}">
+</head>
+<body>
+
+  <!-- ============================= -->
+  <!-- POKEDEX DEVICE                -->
+  <!-- ============================= -->
+  <div id="pokedex-device">
+    <div id="pokedex-hinge"></div>
+
+    <!-- Top Status Bar -->
+    <div id="status-bar">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="status-led" id="status-led"></div>
+        <span style="font-size:11px;color:var(--text-dim);">SkyDex</span>
+      </div>
+      <div id="tracker-count">Dex Entry</div>
+      <div id="clock-display">--:--</div>
+    </div>
+
+    <!-- MAIN SCREEN -->
+    <div id="screen" style="padding:16px;overflow-y:auto;">
+
+      <!-- Loading -->
+      <div id="dex-loading" style="text-align:center;padding-top:60px;color:var(--text-dim);font-size:14px;">
+        <div class="pokeball-spinner" style="margin:0 auto 16px;"></div>
+        Loading Dex data...
+      </div>
+
+      <!-- Dex Content (filled by JS) -->
+      <div id="dex-content" style="display:none;"></div>
+    </div>
+
+    <!-- BOTTOM CONTROLS -->
+    <div id="bottom-controls">
+      <div class="dpad">
+        <div class="dpad-up"></div>
+        <div class="dpad-down"></div>
+        <div class="dpad-left"></div>
+        <div class="dpad-right"></div>
+        <div class="dpad-center"></div>
+      </div>
+      <div class="btn-green" onclick="window.location='/'" title="Back"></div>
+      <div class="btn-red" onclick="window.location='/'" title="Close"></div>
+      <div class="btn-blue" onclick="window.location='/';" title="Home">
+        <div style="color:rgba(255,255,255,0.7);font-size:10px;font-weight:700;margin-top:14px;">HOME</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const HEX = "{{ hex }}";
+
+    // --- Clock ---
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock-display').textContent =
+        now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // --- Type badge renderer ---
+    function renderTypeBadge(type, confidence) {
+      const typeMap = {
+        'Rotor': { color: '#F08030', icon: '\u{1F681}' },
+        'Jet': { color: '#6890F0', icon: '\u2708' },
+        'Sentinel': { color: '#C03028', icon: '\u2B50' },
+        'Heavy': { color: '#7038F8', icon: '\u26A1' },
+        'Bizjet': { color: '#F85888', icon: '\u{1F451}' },
+        'Voyager': { color: '#98D8D8', icon: '\u2601' },
+        'Trainer': { color: '#78C850', icon: '\u{1F331}' },
+        'Hopper': { color: '#A89078', icon: '\u{1F43E}' },
+        'Hauler': { color: '#B8B8D0', icon: '\u{1F4E6}' },
+        'Medevac': { color: '#FF6B9D', icon: '\u271A' },
+        'Commuter': { color: '#F8D030', icon: '\u{1F552}' },
+        'Aircraft': { color: '#888888', icon: '?' },
+      };
+      const t = typeMap[type] || typeMap['Aircraft'];
+      const pct = Math.round((confidence || 0.5) * 100);
+      return `<span class="type-badge" style="background:${t.color};color:#fff;">
+        ${t.icon} ${type} ${pct}%
+      </span>`;
+    }
+
+    // --- Rarity stars ---
+    function renderRarity(rarity) {
+      const map = {
+        'Common': { stars: 1, color: '#9e9e9e' },
+        'Uncommon': { stars: 2, color: '#4caf50' },
+        'Rare': { stars: 3, color: '#2196f3' },
+        'Epic': { stars: 4, color: '#9c27b0' },
+        'Legendary': { stars: 5, color: '#FFD700' },
+      };
+      const r = map[rarity] || map['Common'];
+      const star = rarity === 'Legendary' ? '<span class="star-sparkle">\u2605</span>' : '\u2605';
+      let html = '<span class="rarity-stars">';
+      for (let i = 0; i < r.stars; i++) html += star;
+      html += '</span>';
+      html += `<span style="color:${r.color};font-size:11px;font-weight:700;margin-left:6px;text-transform:uppercase;">${rarity}</span>`;
+      return html;
+    }
+
+    // --- XP bar for evolution ---
+    function renderXpBar(tier, count) {
+      const tiers = { 'Spotted': 1, 'Tracked': 5, 'Tagged': 15, 'Bonded': 40 };
+      const current = tiers[tier] || 1;
+      const keys = Object.keys(tiers);
+      const idx = keys.indexOf(tier);
+      const nextThreshold = idx < keys.length - 1 ? tiers[keys[idx + 1]] : current * 2;
+      const progress = Math.min(100, ((count || 0) / nextThreshold) * 100);
+      return `
+        <div style="margin:8px 0;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-bottom:3px;">
+            <span>${tier}</span>
+            <span>${count || 0} / ${nextThreshold}</span>
+          </div>
+          <div class="xp-bar"><div class="xp-fill" style="width:${progress}%"></div></div>
+        </div>`;
+    }
+
+    // --- Real aircraft spec sheet ---
+    function renderStatsGrid(data) {
+      const s = data.specs;
+      if (!s) return '<div style="color:var(--text-faint);font-size:12px;padding:6px 0;">No spec sheet on file for this type yet.</div>';
+      const rows = [
+        ['Max Speed', s.speed_kt, ' kt', 600, '#9DB7F5'],
+        ['Range', s.range_nm, ' nm', 9000, '#A7DB8D'],
+        ['Ceiling', s.ceiling_ft, ' ft', 51000, '#FAE078'],
+        ['Max Seats', s.seats, '', 600, '#FA92B2'],
+      ];
+      let html = '<div class="dex-stats-grid">';
+      rows.forEach(([label, val, unit, max, color]) => {
+        if (val === null || val === undefined) return;
+        const pct = Math.min(100, (val / max) * 100);
+        const disp = (typeof val === 'number' ? val.toLocaleString() : val) + unit;
+        html += `<div class="dex-stat"><span class="dex-stat-name" style="color:${color}">${label}</span><span class="dex-stat-val">${disp}</span><div class="stat-bar"><div class="stat-fill" style="width:${pct}%;background:${color}"></div></div></div>`;
+      });
+      html += '</div>';
+      if (s.engines) html += `<div style="font-size:11px;color:var(--text-dim);margin-top:6px;">${s.role || ''}${s.role ? ' · ' : ''}${s.engines} engine${s.engines > 1 ? 's' : ''}</div>`;
+      return html;
+    }
+
+    // Photo fallback chain: specific photo -> /static/img/aircraft/<TYPE>.jpg -> plane glyph
+    function dexPhotoError(img) {
+      if (img.dataset.stage !== 'ref' && img.dataset.ref) {
+        img.dataset.stage = 'ref';
+        img.src = img.dataset.ref;
+        return;
+      }
+      img.parentElement.innerHTML =
+        '<div class="dex-photo" style="display:flex;align-items:center;justify-content:center;background:#1a1a1a;font-size:64px;">&#9992;</div>';
+    }
+
+    // --- Main render ---
+    async function loadDex() {
+      try {
+        const res = await fetch(`/api/airframe/${HEX}`);
+        const data = await res.json();
+        document.getElementById('dex-loading').style.display = 'none';
+        document.getElementById('dex-content').style.display = 'block';
+
+        if (data.error) {
+          document.getElementById('dex-content').innerHTML =
+            `<div style="text-align:center;padding-top:40px;color:var(--error-red);">${data.error}</div>`;
+          return;
+        }
+        renderDex(data);
+      } catch (e) {
+        document.getElementById('dex-loading').innerHTML =
+          `<div style="color:var(--error-red);">Failed to load Dex entry</div>`;
+      }
+    }
+
+    function renderDex(data) {
+      const af = data.airframe;
+      const types = data.types || [];
+      const schedule = data.schedule;
+      const history = data.history || [];
+      const tier = data.evolution_tier || 'Spotted';
+      const fact = data.type_fact;
+      const count = data.total_detections || 0;
+
+      // Photo via the backend proxy -> /static/img/aircraft/<TYPE>.jpg -> plane glyph
+      let photoHtml = '<div class="dex-photo" style="display:flex;align-items:center;justify-content:center;background:#1a1a1a;font-size:64px;">&#9992;</div>';
+      const refUrl = af.type_code ? `/static/img/aircraft/${af.type_code.toUpperCase()}.jpg` : '';
+      const firstPhoto = af.hex ? `/api/photo/${af.hex}` : refUrl;
+      if (firstPhoto) {
+        photoHtml = `<img class="dex-photo" src="${firstPhoto}" alt="${af.model || ''}" data-ref="${refUrl}" onerror="dexPhotoError(this)">`;
+      }
+
+      // Type badges
+      const typeBadges = types.map(t => renderTypeBadge(t.type, t.confidence)).join('');
+
+      // Rarity
+      const rarityHtml = renderRarity(af.rarity || 'Common');
+
+      // Evolution XP bar
+      const xpHtml = renderXpBar(tier, count);
+
+      // Stats grid (real spec sheet)
+      const statsHtml = renderStatsGrid(data);
+
+      // Schedule
+      let scheduleHtml = '';
+      if (schedule) {
+        scheduleHtml = `
+          <div style="margin-top:12px;padding:10px;background:rgba(48,167,215,0.1);border-radius:8px;border-left:3px solid var(--accent-blue);">
+            <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Schedule Prediction</div>
+            <div style="font-size:14px;color:var(--accent-blue);font-weight:700;">${schedule.next_expected || 'Unknown'}</div>
+            <div style="font-size:11px;color:var(--text-dim);">Confidence: ${Math.round((schedule.confidence || 0) * 100)}%</div>
+          </div>`;
+      }
+
+      // Altitude chart
+      let chartHtml = '<div style="color:var(--text-faint);font-size:12px;text-align:center;padding:20px;">No altitude history yet</div>';
+      if (history.length > 0) {
+        const alts = history.filter(h => h.altitude).map(h => h.altitude);
+        if (alts.length > 0) {
+          const maxAlt = Math.max(...alts);
+          const minAlt = Math.min(...alts);
+          const range = maxAlt - minAlt || 1;
+          chartHtml = '<div style="display:flex;align-items:flex-end;gap:2px;height:80px;padding:8px 0;">' +
+            alts.slice(0, 50).reverse().map(a => {
+              const h = ((a - minAlt) / range * 100).toFixed(1);
+              return `<div style="flex:1;background:var(--accent-blue);border-radius:2px 2px 0 0;min-width:3px;height:${h}%;"></div>`;
+            }).join('') + '</div>';
+        }
+      }
+
+      // Fun fact
+      let factHtml = '';
+      if (fact) {
+        factHtml = `
+          <div style="margin-top:12px;padding:10px;background:rgba(255,203,5,0.08);border-radius:8px;border-left:3px solid var(--accent-yellow);">
+            <div style="font-size:11px;color:var(--accent-yellow);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Did You Know?</div>
+            <div style="font-size:13px;color:var(--text-dim);line-height:1.5;">${fact}</div>
+          </div>`;
+      }
+
+      document.getElementById('dex-content').innerHTML = `
+        <!-- Dex Number + Title -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <div style="font-size:32px;font-weight:900;color:var(--accent-yellow);font-family:monospace;">#${af.dex_number || '?'}</div>
+          <div>
+            <div style="font-size:18px;font-weight:700;color:var(--text);">${af.registration || af.hex}</div>
+            <div style="font-size:13px;color:var(--text-dim);">${af.model || 'Unknown Aircraft'} ${af.operator ? '\u2022 ' + af.operator : ''}</div>
+          </div>
+        </div>
+
+        <!-- Photo + Stats side by side -->
+        <div style="display:flex;gap:12px;margin-bottom:12px;">
+          ${photoHtml}
+          <div style="flex:1;min-width:0;">
+            ${statsHtml}
+          </div>
+        </div>
+
+        <!-- Rarity + Evolution -->
+        <div style="margin-bottom:8px;">${rarityHtml}</div>
+        ${xpHtml}
+
+        <!-- Types -->
+        <div style="margin:12px 0;">
+          <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Behavioral Types</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">${typeBadges || '<span style="color:var(--text-faint);font-size:12px;">No types assigned yet</span>'}</div>
+        </div>
+
+        ${scheduleHtml}
+
+        <!-- Altitude History -->
+        <div style="margin-top:12px;">
+          <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Altitude History</div>
+          ${chartHtml}
+        </div>
+
+        ${factHtml}
+
+        <!-- Detection count -->
+        <div style="margin-top:12px;text-align:center;font-size:12px;color:var(--text-faint);">
+          ${count} total detection${count !== 1 ? 's' : ''} on record
+        </div>
+      `;
+
+      document.getElementById('tracker-count').textContent =
+        `#${af.dex_number || '?'} ${af.callsign || af.hex}`;
+    }
+
+    loadDex();
+  </script>
+</body>
+</html>

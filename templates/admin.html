@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SkyDex Admin</title>
+  <style>
+    :root { --bg:#0d1117; --card:#161b22; --line:#30363d; --text:#e6edf3; --dim:#8b949e;
+            --red:#DC0A2D; --green:#4ade80; --yellow:#FFCB05; --blue:#30A7D7; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--bg); color:var(--text); font-family:'Segoe UI',Roboto,Arial,sans-serif;
+           font-size:15px; padding:16px; max-width:760px; margin:0 auto; }
+    h1 { font-size:20px; color:var(--yellow); margin:8px 0 2px; }
+    h1 small { color:var(--dim); font-weight:normal; font-size:12px; }
+    h2 { font-size:13px; text-transform:uppercase; letter-spacing:1px; color:var(--blue);
+         margin:22px 0 8px; border-bottom:1px solid var(--line); padding-bottom:4px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:10px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
+    .stat { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px; }
+    .stat .v { font-size:17px; font-weight:bold; }
+    .stat .k { font-size:11px; color:var(--dim); margin-top:2px; }
+    .ok { color:var(--green); } .bad { color:#f87171; } .warn { color:var(--yellow); }
+    .row { display:flex; align-items:center; justify-content:space-between; gap:10px;
+           padding:9px 0; border-bottom:1px solid var(--line); }
+    .row:last-child { border-bottom:none; }
+    .row label { flex:1; }
+    .row label b { display:block; font-size:14px; font-weight:600; }
+    .row label span { font-size:11.5px; color:var(--dim); }
+    .row input[type=text], .row input[type=number] {
+      width:170px; background:#0d1117; color:var(--text); border:1px solid var(--line);
+      border-radius:6px; padding:7px 9px; font-size:14px; }
+    .row input.wide { width:280px; }
+    .switch { position:relative; width:52px; height:28px; flex-shrink:0; }
+    .switch input { opacity:0; width:0; height:0; }
+    .slider { position:absolute; inset:0; background:#3a3f46; border-radius:14px; cursor:pointer; transition:.2s; }
+    .slider:before { content:""; position:absolute; left:3px; top:3px; width:22px; height:22px;
+                     background:#fff; border-radius:50%; transition:.2s; }
+    .switch input:checked + .slider { background:var(--green); }
+    .switch input:checked + .slider:before { transform:translateX(24px); }
+    .restart-tag { font-size:9px; color:var(--yellow); border:1px solid var(--yellow);
+                   border-radius:4px; padding:1px 4px; margin-left:6px; vertical-align:middle; }
+    button.act { background:var(--blue); color:#fff; border:none; border-radius:8px;
+                 padding:11px 16px; font-size:14px; font-weight:bold; cursor:pointer; margin:4px 6px 4px 0; }
+    button.act.red { background:var(--red); }
+    button.act.grey { background:#3a3f46; }
+    #savebar { position:fixed; left:0; right:0; bottom:0; background:rgba(13,17,23,.95);
+               border-top:1px solid var(--line); padding:10px 16px; display:none; text-align:center; }
+    #savebar.show { display:block; }
+    #msg { font-size:13px; margin-left:10px; }
+    a { color:var(--blue); }
+  </style>
+</head>
+<body>
+  <button class="act grey" style="float:right;margin-top:4px;" onclick="location.href='/'">&larr; Back to Kiosk</button>
+  <h1>SkyDex Admin <small id="sub">loading…</small></h1>
+
+  <h2>Status</h2>
+  <div class="grid" id="status-grid"><div class="stat"><div class="v">…</div><div class="k">loading</div></div></div>
+
+  <h2>Actions</h2>
+  <div class="card">
+    <button class="act red" onclick="act('/api/admin/restart','Restarting… the kiosk will reload in ~10s')">Restart SkyDex</button>
+    <button class="act" onclick="act('/api/admin/backup','Backup started — check Google Drive in a minute')">Backup now</button>
+    <button class="act grey" onclick="act('/api/admin/maintenance','Maintenance done')">Run DB maintenance</button>
+    <span id="msg"></span>
+  </div>
+
+  <div id="settings-root"></div>
+
+  <div id="savebar"><button class="act" onclick="save()">Save changes</button>
+    <span id="savemsg" class="warn"></span></div>
+
+  <script>
+    let dirty = {};
+
+    function fmtBytes(b){ if(!b) return '0'; const u=['B','KB','MB','GB']; let i=0;
+      while(b>=1024&&i<3){b/=1024;i++;} return b.toFixed(1)+' '+u[i]; }
+    function fmtUp(s){ const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);
+      return (d?d+'d ':'')+(h?h+'h ':'')+m+'m'; }
+
+    async function loadStatus(){
+      try {
+        const h = await (await fetch('/api/health')).json();
+        document.getElementById('sub').textContent =
+          (h.location?.name||'') + ' · build ' + (h.version?.code_mtime_str||'?');
+        const src = h.receiver?.source_stats||{};
+        const ais = h.marine?.aisstream||{};
+        const cells = [
+          ['Uptime', fmtUp(h.uptime_seconds||0), ''],
+          ['Aircraft tracked', h.receiver?.contact_count ?? '—', ''],
+          ['Air source', src.last_source||'—', src.last_source==='dump1090'?'ok':'warn'],
+          ['AISStream', ais.connected?'connected':'down', ais.connected?'ok':'bad'],
+          ['Vessels tracked', (h.marine?.vessel_count ?? 0)+(ais.tracked?(' ('+ais.tracked+' cloud)'):''), ''],
+          ['Database', fmtBytes(h.db_size_bytes), ''],
+          ['Airframes logged', h.database_stats?.total_aircraft ?? '—', ''],
+          ['OpenSky auth', h.receiver?.opensky_auth_ok===false?'FAILED':'ok', h.receiver?.opensky_auth_ok===false?'bad':'ok'],
+        ];
+        document.getElementById('status-grid').innerHTML = cells.map(c=>
+          `<div class="stat"><div class="v ${c[2]}">${c[1]}</div><div class="k">${c[0]}</div></div>`).join('');
+      } catch(e) {
+        document.getElementById('status-grid').innerHTML =
+          '<div class="stat"><div class="v bad">server unreachable</div><div class="k">is skydex running?</div></div>';
+      }
+    }
+
+    async function loadSettings(){
+      const data = await (await fetch('/api/settings/admin')).json();
+      const groups = {};
+      data.spec.forEach(s => (groups[s.group] = groups[s.group]||[]).push(s));
+      let html = '';
+      for (const [g, items] of Object.entries(groups)) {
+        html += `<h2>${g}</h2><div class="card">`;
+        for (const s of items) {
+          const tag = s.restart ? '<span class="restart-tag">RESTART</span>' : '';
+          let ctl;
+          if (s.type === 'bool') {
+            ctl = `<label class="switch"><input type="checkbox" data-key="${s.key}"
+                   ${s.value?'checked':''} onchange="mark(this,this.checked)"><span class="slider"></span></label>`;
+          } else {
+            const wide = s.type==='str' ? 'wide' : '';
+            const typ = s.type==='str' ? 'text' : 'number';
+            const step = s.type==='float' ? '0.1' : '1';
+            ctl = `<input class="${wide}" type="${typ}" step="${step}" value="${String(s.value).replace(/"/g,'&quot;')}"
+                   data-key="${s.key}" oninput="mark(this,this.value)">`;
+          }
+          html += `<div class="row"><label><b>${s.label}${tag}</b><span>${s.help}</span></label>${ctl}</div>`;
+        }
+        html += '</div>';
+      }
+      document.getElementById('settings-root').innerHTML = html;
+    }
+
+    function mark(el, val){ dirty[el.dataset.key] = val;
+      document.getElementById('savebar').classList.add('show');
+      document.getElementById('savemsg').textContent = Object.keys(dirty).length + ' unsaved'; }
+
+    async function save(){
+      const res = await (await fetch('/api/settings', {method:'POST',
+        headers:{'Content-Type':'application/json'}, body:JSON.stringify(dirty)})).json();
+      dirty = {};
+      const bar = document.getElementById('savemsg');
+      if (Object.keys(res.errors||{}).length) bar.textContent = 'Errors: '+JSON.stringify(res.errors);
+      else if (res.restart_required) bar.textContent = 'Saved — press Restart SkyDex to apply the marked ones';
+      else { bar.textContent = 'Saved ✓'; setTimeout(()=>document.getElementById('savebar').classList.remove('show'), 1500); }
+    }
+
+    async function act(url, okMsg){
+      const m = document.getElementById('msg'); m.textContent = '…';
+      try { await fetch(url, {method:'POST'}); m.textContent = okMsg; m.className='ok'; }
+      catch(e){ m.textContent = 'failed: '+e; m.className='bad'; }
+      setTimeout(loadStatus, 4000);
+    }
+
+    loadStatus(); loadSettings(); setInterval(loadStatus, 15000);
+  </script>
+</body>
+</html>
