@@ -200,6 +200,27 @@ Bonus: a full live map is available at `http://<pi>/tar1090`.
 
 ---
 
+## ACARS — read the planes' text messages (optional extra dongle)
+
+Planes text the ground all day — position reports, gate changes, controller
+uplinks — on ACARS. Feed OmniDex with the standard decoders and each plane's
+Dex page shows the conversation as chat bubbles (green = plane, blue = ground):
+
+```bash
+# Classic VHF ACARS (one dongle, several frequencies at once):
+acarsdec -o 0 -j 127.0.0.1:5555 -r <dongle-serial> 131.550 131.725 130.025 131.825
+
+# And/or VDL Mode 2 — the busier digital channel:
+dumpvdl2 --rtlsdr <dongle-serial> \
+         --output decoded:json:udp:address=127.0.0.1,port=5555 136975000
+```
+
+Both can send to the same port (`5555`, changeable in `/admin`). Full notes
+in `docs/ACARS.md`. No decoder running? The Dex pages simply don't show the
+section — nothing breaks.
+
+---
+
 ## SeaDex (Marine / AIS) — the second dongle
 
 SeaDex shows ship traffic on Long Island Sound the same way SkyDex shows

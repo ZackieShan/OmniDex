@@ -510,6 +510,18 @@ def main() -> None:
     pipeline = EnrichmentPipeline(db, receiver, config)
     pipeline.start()
 
+    # ACARS / VDL-2 datalink — plane text messages (fed by acarsdec/dumpvdl2).
+    acars = None
+    if config.acars.enabled:
+        try:
+            from acars import AcarsReceiver
+            acars = AcarsReceiver(udp_port=config.acars.udp_port,
+                                  max_messages=config.acars.max_messages)
+            acars.start()
+        except Exception as e:
+            logger.error("ACARS receiver failed to start: %s", e)
+            acars = None
+
     # SeaDex AIS receiver + marine pipeline (marine traffic), if enabled.
     ais = None
     marine_pipeline = None
@@ -585,7 +597,7 @@ def main() -> None:
         logger.error("StormDex failed to start: %s", e)
 
     # Wire globals into API module
-    set_globals(db, receiver, config, ais, land, ether, journeys)
+    set_globals(db, receiver, config, ais, land, ether, journeys, acars)
 
     # ISS pass call-outs need the pass predictor that set_globals just created.
     import api as _api_mod
@@ -638,6 +650,8 @@ def main() -> None:
     finally:
         pipeline.stop()
         receiver.stop()
+        if acars:
+            acars.stop()
         if marine_pipeline:
             marine_pipeline.stop()
         if ais:

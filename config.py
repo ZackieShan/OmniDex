@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Tuple
 
+VERSION = "1.1.0"
+
 
 def _load_dotenv() -> None:
     """Tiny stdlib .env loader (KEY=VALUE lines, # comments). Real environment
@@ -94,6 +96,20 @@ class ReceiverConfig:
     # credentials — HTTP Basic Auth with username/password no longer works.
     opensky_client_id: str = field(default_factory=lambda: _env("SKYDEX_OPENSKY_CLIENT_ID"))
     opensky_client_secret: str = field(default_factory=lambda: _env("SKYDEX_OPENSKY_CLIENT_SECRET"))
+
+
+@dataclass(frozen=True)
+class AcarsConfig:
+    """ACARS / VDL-2 datalink — the planes' text messages.
+
+    SkyDex doesn't demodulate ACARS itself; run acarsdec and/or dumpvdl2 on
+    their own RTL-SDR(s) and point their JSON-over-UDP output at udp_port
+    (see acars.py's docstring for the exact commands). Messages then appear
+    as a chat thread on each plane's Dex detail page.
+    """
+    enabled: bool = True
+    udp_port: int = 5555        # where acarsdec/dumpvdl2 send their JSON
+    max_messages: int = 600     # rolling buffer (in memory only)
 
 
 @dataclass(frozen=True)
@@ -254,6 +270,7 @@ class SkyDexConfig:
     location: LocationConfig = field(default_factory=LocationConfig)
     range: RangeConfig = field(default_factory=RangeConfig)
     receiver: ReceiverConfig = field(default_factory=ReceiverConfig)
+    acars: AcarsConfig = field(default_factory=AcarsConfig)
     enrichment: EnrichmentConfig = field(default_factory=EnrichmentConfig)
     game: GameConfig = field(default_factory=GameConfig)
     marine: MarineConfig = field(default_factory=MarineConfig)

@@ -63,6 +63,7 @@ _asteroid: Optional[AsteroidClient] = None
 _land: Optional[Any] = None
 _ether: Optional[Any] = None
 _journeys: Optional[Any] = None
+_acars: Optional[Any] = None
 _aerodatabox = AerodataboxClient()
 _planespotters = PlanespottersClient()
 _jetapi = JetApiClient()
@@ -198,14 +199,16 @@ def _cached_image(kind: str, key, url: Optional[str]) -> Optional[tuple]:
 
 
 def set_globals(db: Database, receiver: Any, config: SkyDexConfig, ais: Any = None,
-                land: Any = None, ether: Any = None, journeys: Any = None) -> None:
-    global _db, _receiver, _ais, _config, _weather, _stormglass, _localdb, _airports, _photo_dir, _apod, _sat, _launch, _nearmiss, _asteroid, _land, _ether, _journeys
+                land: Any = None, ether: Any = None, journeys: Any = None,
+                acars: Any = None) -> None:
+    global _db, _receiver, _ais, _config, _weather, _stormglass, _localdb, _airports, _photo_dir, _apod, _sat, _launch, _nearmiss, _asteroid, _land, _ether, _journeys, _acars
     _db = db
     _receiver = receiver
     _ais = ais
     _land = land
     _ether = ether
     _journeys = journeys
+    _acars = acars
     _config = config
     _localdb = LocalDbClient(config.faa_db_path, config.opensky_db_path)
     _airports = AirportResolver(config.airports_db_path)
@@ -1404,6 +1407,29 @@ async def get_aircraft_photo(hex_code: str) -> Dict[str, Any]:
 async def get_aircraft_info(hex_code: str) -> Dict[str, Any]:
     """Aircraft registration, type, operator from Aerodatabox."""
     return _aerodatabox.lookup_aircraft_info(hex_code)
+
+
+@app.get("/api/acars/plane/{hex_code}")
+async def get_acars_for_plane(hex_code: str, reg: str = "", flight: str = "",
+                              n: int = 40) -> Dict[str, Any]:
+    """Datalink (ACARS/VDL-2) messages for one airframe, oldest first — the
+    Dex detail page renders these as a plane <-> ground chat thread. Matching
+    uses the ICAO hex (VDL-2 frames carry it) plus the registration and flight
+    the frontend already knows."""
+    if _acars is None:
+        return {"enabled": False, "messages": []}
+    msgs = _acars.for_aircraft(hex_code=hex_code, reg=reg, flight=flight,
+                               n=max(1, min(int(n), 200)))
+    return {"enabled": True, "messages": msgs, "stats": _acars.stats}
+
+
+@app.get("/api/acars/recent")
+async def get_acars_recent(n: int = 30) -> Dict[str, Any]:
+    """The latest datalink messages from ANY aircraft, newest first."""
+    if _acars is None:
+        return {"enabled": False, "messages": []}
+    return {"enabled": True, "stats": _acars.stats,
+            "messages": _acars.recent(max(1, min(int(n), 200)))}
 
 
 @app.get("/api/api-balance")

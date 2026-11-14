@@ -1588,6 +1588,8 @@ function renderDetail(data) {
         <div class="dex-section-title">Type Specs ${aircraft.type_code ? '(' + aircraft.type_code + ')' : ''}</div>
         ${renderSpecBars(data.specs)}
 
+        <div id="acars-thread"></div>
+
         ${renderRouteStats(data.route_stats)}
 
         <div class="dex-section-title">Sighting Log</div>
@@ -1606,6 +1608,43 @@ function renderDetail(data) {
         </div>
       </div>
     </div>`;
+
+  loadAcarsThread(aircraft);
+}
+
+/** Datalink (ACARS/VDL-2) chat thread for the Dex detail page. Green bubbles =
+ * the plane transmitting (downlink); blue bubbles = ground/controller uplinks.
+ * Stays hidden unless the ACARS receiver has heard this airframe. */
+async function loadAcarsThread(aircraft) {
+  const holder = document.getElementById('acars-thread');
+  if (!holder || !aircraft || !aircraft.hex) return;
+  try {
+    const q = new URLSearchParams({ reg: aircraft.registration || '',
+                                    flight: (aircraft.callsign || '').trim() });
+    const res = await fetch(`/api/acars/plane/${aircraft.hex}?${q}`);
+    if (!res.ok) return;
+    const d = await res.json();
+    const msgs = d.messages || [];
+    if (!d.enabled || !msgs.length) return;
+    const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const who = esc(aircraft.callsign || aircraft.registration || 'PLANE');
+    holder.innerHTML = `
+      <div class="dex-section-title">Datalink — ACARS</div>
+      <div class="acars-chat">` + msgs.map(m => {
+        const t = new Date(m.ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const down = m.dir === 'down';
+        const meta = `${down ? who : 'GROUND'} · ${t}` +
+          (m.label ? ` · ${esc(m.label)}` : '') + (m.freq ? ` · ${esc(m.freq)} MHz` : '');
+        return `<div class="acars-row ${down ? 'down' : 'up'}">
+            <div class="acars-bubble ${down ? 'from-plane' : 'from-ground'}">
+              <div class="acars-meta">${meta}</div>
+              <div class="acars-text">${esc(m.text)}</div>
+            </div>
+          </div>`;
+      }).join('') + `</div>
+      <div class="acars-note">Plane &#x2194; ground text messages heard on your own antenna.
+        Green = ${who} transmitting &middot; blue = ground replies.</div>`;
+  } catch (e) { /* no datalink — section stays hidden */ }
 }
 
 // ============================================

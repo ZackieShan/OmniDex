@@ -11,7 +11,10 @@ Born on the shoulder of Long Island Sound.
 ## The five Dexes
 
 - **SkyDex** — aircraft overhead via ADS-B (local dongle) or a free internet
-  feed. Catch them when they enter your "pokéball" radius.
+  feed. Catch them when they enter your "pokéball" radius. Add an ACARS
+  decoder and each plane's Dex page grows a live **text-chat thread** of its
+  datalink messages — green bubbles from the plane, blue from the ground
+  (see `docs/ACARS.md`).
 - **SeaDex** — vessels on the Sound via AIS (local receiver or AISStream).
 - **AtmoDex** — a live weather station, 10-day forecast, animated wind map,
   the ISS and satellite passes, NASA's photo of the day, and StormDex history.

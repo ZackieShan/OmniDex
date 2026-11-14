@@ -47,6 +47,15 @@ SPEC: Dict[str, Dict[str, Any]] = {
     "opensky_active_end_hour": {
         "default": 22, "type": "int", "group": "Air", "restart": True,
         "label": "Active hours end (0-23)", "help": "Local hour fast polling ends."},
+    "acars_enabled": {
+        "default": True, "type": "bool", "group": "Air", "restart": True,
+        "label": "ACARS datalink",
+        "help": "Listen for plane text messages from acarsdec/dumpvdl2 (JSON over UDP). "
+                "Shows a chat thread on each plane's Dex page."},
+    "acars_udp_port": {
+        "default": 5555, "type": "int", "group": "Air", "restart": True,
+        "label": "ACARS UDP port",
+        "help": "Port the decoders send JSON to, e.g. acarsdec -j 127.0.0.1:5555."},
 
     # --- Sea ---------------------------------------------------------------
     "sea_radius_miles": {
@@ -308,7 +317,13 @@ class Settings:
             opensky_active_end_hour=g("opensky_active_end_hour"),
         )
         marine = dataclasses.replace(config.marine, radius_miles=g("sea_radius_miles"))
-        return dataclasses.replace(config, range=rng, receiver=recv, marine=marine)
+        acars = dataclasses.replace(
+            config.acars,
+            enabled=bool(g("acars_enabled")),
+            udp_port=int(g("acars_udp_port")),
+        )
+        return dataclasses.replace(config, range=rng, receiver=recv, marine=marine,
+                                   acars=acars)
 
 
 # Module-level singleton — import `settings` everywhere.

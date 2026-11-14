@@ -4289,3 +4289,42 @@ body.sea-mode #kbdr-btn, body.sea-mode #replay-btn { display: none; }  /* air-on
   .dart-thing svg { width: 130px; }
   .pig-thing svg { width: 185px; }
 }
+
+/* ===== Datalink (ACARS) — plane vs ground word bubbles (text-chat style) ===== */
+.acars-chat { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 8px; }
+.acars-row { display: flex; }
+.acars-row.down { justify-content: flex-end; }   /* the plane "sends" from the right */
+.acars-row.up { justify-content: flex-start; }   /* ground replies on the left */
+.acars-bubble {
+  max-width: 82%;
+  padding: 7px 10px;
+  border-radius: 14px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.acars-bubble.from-plane {
+  background: rgba(74, 222, 128, 0.14);
+  border: 1px solid var(--accent-green);
+  border-bottom-right-radius: 4px;
+}
+.acars-bubble.from-ground {
+  background: rgba(48, 167, 215, 0.16);
+  border: 1px solid var(--accent-blue);
+  border-bottom-left-radius: 4px;
+}
+.acars-meta {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 3px;
+  color: var(--text-dim);
+}
+.acars-bubble.from-plane .acars-meta { color: var(--accent-green); }
+.acars-bubble.from-ground .acars-meta { color: var(--accent-blue); }
+.acars-text {
+  font-family: 'Courier New', monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+}
+.acars-note { font-size: 10px; color: var(--text-faint); margin: 2px 0 10px; }
