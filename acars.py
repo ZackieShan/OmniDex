@@ -197,3 +197,43 @@ class AcarsReceiver:
                or (rg and m.get("reg") == rg)
                or (fl and m.get("flight") == fl)]
         return out[-max(1, n):]
+
+
+def match_to_contacts(msgs: List[Dict[str, Any]], contacts: Dict[str, Dict[str, Any]],
+                      reg_of=None, limit: int = 12) -> List[Dict[str, Any]]:
+    """Match datalink messages (newest first) to live receiver contacts, for the
+    map's pop-up word bubbles. Returns at most one bubble per plane — its newest
+    message — as {hex, dir, label, ts, text, callsign}.
+
+    Matching order: ICAO hex (VDL2 carries it) > registration > flight number.
+    `reg_of` is an optional callable hex -> registration (e.g. a Dex DB lookup),
+    used to pair classic-ACARS tails with live ADS-B contacts.
+    """
+    by_hex: Dict[str, Any] = {}
+    by_flt: Dict[str, Any] = {}
+    by_reg: Dict[str, Any] = {}
+    for hx, c in (contacts or {}).items():
+        hxu = str(hx).upper()
+        by_hex[hxu] = (hxu, c or {})
+        f = norm_flight((c or {}).get("callsign"))
+        if f:
+            by_flt[f] = (hxu, c or {})
+        r = norm_reg(reg_of(hxu)) if reg_of else ""
+        if r:
+            by_reg[r] = (hxu, c or {})
+    out: List[Dict[str, Any]] = []
+    used = set()
+    for m in msgs:
+        hit = (by_hex.get(m.get("hex") or "")
+               or by_reg.get(m.get("reg") or "")
+               or by_flt.get(m.get("flight") or ""))
+        if not hit or hit[0] in used:
+            continue
+        hxu, c = hit
+        used.add(hxu)
+        out.append({"hex": hxu, "dir": m.get("dir"), "label": m.get("label"),
+                    "ts": m.get("ts"), "text": (m.get("text") or "")[:140],
+                    "callsign": c.get("callsign") or m.get("reg_raw") or ""})
+        if len(out) >= max(1, limit):
+            break
+    return out

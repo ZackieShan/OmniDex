@@ -1285,10 +1285,17 @@ function renderMap(contacts, colorFn) {
     _mapMarkers.push(m);
 
     _mapGlide.push({
-      marker: m, solid, dashed, tip, trailLine, trail,
+      id, marker: m, solid, dashed, tip, trailLine, trail,
       lat0: c.lat, lon0: c.lon, t0, vLat, vLon,
       brg: v ? v.brg : 0, kts: v ? v.kts : 0, projMin,
     });
+  });
+
+  // ACARS bubbles ride along: re-anchor to the new markers, drop orphans.
+  Object.keys(_acarsBubbles).forEach(hx => {
+    const pos = _acarsPlanePos(hx);
+    if (pos) _acarsBubbles[hx].marker.setLatLng(pos);
+    else _dropAcarsBubble(hx);
   });
 
   // Drop trails/baselines for contacts no longer in range (keeps memory bounded).
@@ -1314,6 +1321,8 @@ function _glideMap() {
     const glat = g.lat0 + g.vLat * dt;
     const glon = g.lon0 + g.vLon * dt;
     g.marker.setLatLng([glat, glon]);
+    const ab = _acarsBubbles[String(g.id || '').toUpperCase()];
+    if (ab) ab.marker.setLatLng([glat, glon]);
     if (g.trailLine) g.trailLine.setLatLngs(g.trail.concat([[glat, glon]]));
     if (g.solid) {
       const [stub, end] = _courseGeom(glat, glon, g.brg, g.kts, g.projMin);
@@ -1328,6 +1337,75 @@ function renderEmptyState() {
   document.getElementById('contacts-list').innerHTML = '';
   document.getElementById('empty-state').classList.remove('hidden');
 }
+
+// ============================================
+// ACARS MAP BUBBLES — plane "speech" on the live map
+// ============================================
+// Fresh datalink messages pop up as little word bubbles next to the plane
+// markers (green = the plane transmitting, blue = ground replying), ride along
+// with the glide animation, and fade away after a few seconds.
+
+let _acarsBubbles = {};     // HEX -> { marker, fadeTimer, timer }
+let _acarsLiveTs = 0;       // server-clock watermark: only fetch what's new
+const ACARS_BUBBLE_MS = 7000;
+
+function _acarsPlanePos(hex) {
+  const g = _mapGlide.find(g => String(g.id || '').toUpperCase() === hex);
+  return g ? g.marker.getLatLng() : null;
+}
+
+function _dropAcarsBubble(hex) {
+  const b = _acarsBubbles[hex];
+  if (!b) return;
+  clearTimeout(b.fadeTimer);
+  clearTimeout(b.timer);
+  if (_map) _map.removeLayer(b.marker);
+  delete _acarsBubbles[hex];
+}
+
+function _acarsBubbleHtml(b) {
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const down = b.dir === 'down';
+  return `<div class="acars-map-bubble ${down ? 'from-plane' : 'from-ground'}">
+      <div class="acars-meta">${down ? esc(b.callsign || 'PLANE') : 'GROUND'}${b.label ? ' · ' + esc(b.label) : ''}</div>
+      <div class="acars-text">${esc(b.text)}</div>
+    </div>`;
+}
+
+function showAcarsBubble(b) {
+  if (!_map || !window.L) return;
+  const hex = String(b.hex || '').toUpperCase();
+  const pos = _acarsPlanePos(hex);
+  if (!pos) return;                 // plane not on the map right now
+  _dropAcarsBubble(hex);            // a newer message replaces the old bubble
+  const icon = L.divIcon({ className: 'acars-map-anchor', html: _acarsBubbleHtml(b),
+                           iconSize: null, iconAnchor: [0, 0] });
+  const marker = L.marker(pos, { icon, interactive: false, zIndexOffset: 1000 }).addTo(_map);
+  const entry = { marker };
+  entry.fadeTimer = setTimeout(() => {
+    const el = marker.getElement() && marker.getElement().querySelector('.acars-map-bubble');
+    if (el) el.classList.add('fading');
+  }, ACARS_BUBBLE_MS - 800);
+  entry.timer = setTimeout(() => _dropAcarsBubble(hex), ACARS_BUBBLE_MS);
+  _acarsBubbles[hex] = entry;
+}
+
+async function _pollAcarsLive() {
+  // Only while the air-mode live map is on screen; clear leftovers otherwise.
+  if (!_map || _mapMode !== 'map' || SkyDex.mode === 'sea') {
+    Object.keys(_acarsBubbles).forEach(_dropAcarsBubble);
+    return;
+  }
+  try {
+    const res = await fetch(`/api/acars/live?since=${_acarsLiveTs}`);
+    if (!res.ok) return;
+    const d = await res.json();
+    if (d.now) _acarsLiveTs = d.now;
+    if (d.enabled) (d.bubbles || []).forEach(showAcarsBubble);
+  } catch (e) { /* radio silence is fine */ }
+}
+
+setInterval(_pollAcarsLive, 5000);
 
 // ============================================
 // DEX (COLLECTION) VIEW

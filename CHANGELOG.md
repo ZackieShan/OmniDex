@@ -3,6 +3,24 @@
 All notable changes to OmniDex. Versions follow [semver](https://semver.org)
 in spirit: minor = new Dex powers, patch = fixes.
 
+## 1.2.0 — 2026-11-14
+
+### Added — ACARS bubbles pop up on the live map 🗺️💬
+
+Datalink messages now appear right on the map, not just the Dex page: when a
+plane in range sends or receives an ACARS message, a little word bubble pops
+up next to its marker (green = the plane transmitting, blue = ground
+replying), rides along with the moving plane, and fades away after ~7 seconds.
+
+- `GET /api/acars/live?since=<ts>` — fresh messages matched to the planes
+  currently in range (by ICAO hex, registration via the Dex DB, or flight
+  number), one bubble per plane, newest message wins.
+- The map polls every 5 s while the air-mode live map is on screen; bubbles
+  follow the glide animation and clean themselves up when the plane leaves
+  range or you switch views.
+- Bubble text is capped at 140 characters on the map — the full thread still
+  lives on the plane's Dex detail page.
+
 ## 1.1.0 — 2026-11-14
 
 ### Added — ACARS datalink: read the planes' text messages ✈️💬

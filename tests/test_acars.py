@@ -105,3 +105,42 @@ class TestBufferAndMatching:
         rx.feed(_acarsdec(text="SECOND", timestamp=1700000002.0))
         msgs = rx.for_aircraft(reg="N123AB")
         assert [m["text"] for m in msgs][-1] == "SECOND"
+
+
+class TestMapBubbleMatching:
+    def _msgs(self):
+        rx = _rx()
+        rx.feed(_acarsdec())                                  # reg N123AB / UA1234
+        rx.feed(_vdl2())                                      # hex AC82EC (uplink)
+        rx.feed(_acarsdec(tail=".N999ZZ", flight="ZZ999", text="NO MATCH"))
+        return rx.recent(10)                                  # newest first
+
+    def test_matches_hex_reg_and_flight(self):
+        from acars import match_to_contacts
+        contacts = {
+            "ac82ec": {"callsign": "DAL89", "lat": 41.2, "lon": -73.1},
+            "abc123": {"callsign": "UA1234", "lat": 41.3, "lon": -73.2},
+        }
+        bubbles = match_to_contacts(self._msgs(), contacts)
+        assert {b["hex"] for b in bubbles} == {"AC82EC", "ABC123"}
+        vdl = next(b for b in bubbles if b["hex"] == "AC82EC")
+        assert vdl["dir"] == "up" and vdl["callsign"] == "DAL89"
+
+    def test_matches_registration_via_lookup(self):
+        from acars import match_to_contacts
+        contacts = {"ddeeff": {"callsign": "WAT123"}}         # callsign won't match
+        bubbles = match_to_contacts(self._msgs(), contacts,
+                                    reg_of=lambda hx: "N123AB" if hx == "DDEEFF" else "")
+        assert len(bubbles) == 1 and bubbles[0]["hex"] == "DDEEFF"
+
+    def test_one_bubble_per_plane_newest_wins(self):
+        from acars import match_to_contacts
+        rx = _rx()
+        rx.feed(_acarsdec(text="OLD", timestamp=1.0))
+        rx.feed(_acarsdec(text="NEW", timestamp=2.0))
+        bubbles = match_to_contacts(rx.recent(10), {"abc123": {"callsign": "UA1234"}})
+        assert len(bubbles) == 1 and bubbles[0]["text"] == "NEW"
+
+    def test_no_contacts_no_bubbles(self):
+        from acars import match_to_contacts
+        assert match_to_contacts(self._msgs(), {}) == []

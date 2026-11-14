@@ -26,6 +26,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
 
 from config import SkyDexConfig
+from acars import match_to_contacts as acars_match
 from database import Database
 from enrichment import AdsbdbClient, LocalDbClient, WeatherClient, TideClient, StormglassClient, AerodataboxClient, AirportResolver, PlanespottersClient, WikipediaImageClient, JetApiClient, CommonsImageClient
 from classifier import Classifier, SchedulePredictor, contrail_likely, flight_phase, rarity_for
@@ -64,6 +65,7 @@ _land: Optional[Any] = None
 _ether: Optional[Any] = None
 _journeys: Optional[Any] = None
 _acars: Optional[Any] = None
+_acars_reg_cache: Dict[str, str] = {}
 _aerodatabox = AerodataboxClient()
 _planespotters = PlanespottersClient()
 _jetapi = JetApiClient()
@@ -1421,6 +1423,33 @@ async def get_acars_for_plane(hex_code: str, reg: str = "", flight: str = "",
     msgs = _acars.for_aircraft(hex_code=hex_code, reg=reg, flight=flight,
                                n=max(1, min(int(n), 200)))
     return {"enabled": True, "messages": msgs, "stats": _acars.stats}
+
+
+@app.get("/api/acars/live")
+async def get_acars_live(since: float = 0.0, n: int = 12) -> Dict[str, Any]:
+    """Fresh datalink messages matched to planes currently in range — the map
+    pops these up as transient word bubbles next to the plane markers. Pass the
+    `now` from the previous call as `since` to get only what's new."""
+    now = time.time()
+    if _acars is None or _receiver is None:
+        return {"enabled": False, "bubbles": [], "now": now}
+    cutoff = since if since > 0 else now - 30
+    msgs = [m for m in _acars.recent(60) if m["ts"] > cutoff]
+    if not msgs:
+        return {"enabled": True, "bubbles": [], "now": now}
+
+    def reg_of(hx: str) -> str:
+        # Registration for a live hex, via the Dex DB (tiny cache: regs don't change).
+        if hx not in _acars_reg_cache:
+            if len(_acars_reg_cache) > 500:
+                _acars_reg_cache.clear()
+            af = _db.get_airframe(hx) if _db else None
+            _acars_reg_cache[hx] = (af or {}).get("registration") or ""
+        return _acars_reg_cache[hx]
+
+    bubbles = acars_match(msgs, _receiver.get_all_contacts() or {}, reg_of,
+                          limit=max(1, min(int(n), 30)))
+    return {"enabled": True, "bubbles": bubbles, "now": now}
 
 
 @app.get("/api/acars/recent")
