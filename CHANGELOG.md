@@ -3,6 +3,14 @@
 All notable changes to OmniDex. Versions follow [semver](https://semver.org)
 in spirit: minor = new Dex powers, patch = fixes.
 
+## 1.2.1 — 2026-11-15
+
+### Docs
+
+- Added feature screenshots (`docs/img/`) to the README and `docs/ACARS.md`:
+  the Dex-page datalink chat thread and the transient map bubbles. Rendered
+  from the shipped CSS with sample messages.
+
 ## 1.2.0 — 2026-11-14
 
 ### Added — ACARS bubbles pop up on the live map 🗺️💬

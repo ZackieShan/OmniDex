@@ -14,7 +14,12 @@ Born on the shoulder of Long Island Sound.
   feed. Catch them when they enter your "pokéball" radius. Add an ACARS
   decoder and each plane's Dex page grows a live **text-chat thread** of its
   datalink messages — green bubbles from the plane, blue from the ground
-  (see `docs/ACARS.md`).
+  (see `docs/ACARS.md`):
+
+  <p align="center">
+    <img src="docs/img/acars-dex-thread.png" width="340" alt="ACARS datalink chat thread on a plane's Dex page (sample messages)">
+    <img src="docs/img/acars-map-bubbles.png" width="340" alt="ACARS word bubbles popping up next to planes on the live map (sample messages)">
+  </p>
 - **SeaDex** — vessels on the Sound via AIS (local receiver or AISStream).
 - **AtmoDex** — a live weather station, 10-day forecast, animated wind map,
   the ISS and satellite passes, NASA's photo of the day, and StormDex history.

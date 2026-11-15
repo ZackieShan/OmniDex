@@ -17,6 +17,19 @@ styled like a phone conversation:
 The section only appears on planes the receiver has actually heard, so an
 empty radio stays invisible.
 
+## What it looks like
+
+The Dex detail page grows a chat thread, and fresh messages also pop up as
+word bubbles next to the plane markers on the live map, fading out after a
+few seconds (sample messages shown):
+
+<p align="center">
+  <img src="img/acars-dex-thread.png" width="360" alt="ACARS chat thread on the Dex detail page">
+</p>
+<p align="center">
+  <img src="img/acars-map-bubbles.png" width="420" alt="Transient ACARS bubbles beside planes on the live map">
+</p>
+
 ## Hardware & decoders
 
 OmniDex does not demodulate ACARS itself — same philosophy as readsb for
